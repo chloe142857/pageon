@@ -7,7 +7,6 @@ import {
   clearStudentSession,
   createStudentSession,
   normalizeClassroomCode,
-  normalizeStudentIdentifier,
 } from "@/lib/auth/student";
 import { getSafeStudentReturnPath } from "@/lib/student-return-path";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
@@ -21,7 +20,8 @@ export async function studentSignIn(formData: FormData) {
   const returnTo = getSafeStudentReturnPath(String(formData.get("next") ?? ""));
   const parsed = studentSignInSchema.safeParse({
     classroomCode: formData.get("classroomCode"),
-    studentIdentifier: formData.get("studentIdentifier"),
+    studentNumber: formData.get("studentNumber"),
+    displayName: formData.get("displayName"),
     pin: formData.get("pin"),
   });
 
@@ -38,19 +38,20 @@ export async function studentSignIn(formData: FormData) {
     .maybeSingle();
 
   if (!classroom) {
-    withError("학급 코드, 학생 아이디 또는 비밀번호를 확인하세요.");
+    withError("학급 코드, 번호, 이름 또는 비밀번호를 확인하세요.");
   }
 
   const { data: student } = await admin
     .from("students")
     .select("id")
     .eq("classroom_id", classroom.id)
-    .eq("student_identifier", normalizeStudentIdentifier(parsed.data.studentIdentifier))
+    .eq("student_number", parsed.data.studentNumber)
+    .eq("display_name", parsed.data.displayName)
     .eq("active", true)
     .maybeSingle();
 
   if (!student) {
-    withError("학급 코드, 학생 아이디 또는 비밀번호를 확인하세요.");
+    withError("학급 코드, 번호, 이름 또는 비밀번호를 확인하세요.");
   }
 
   const { data: credentials } = await admin
@@ -60,7 +61,7 @@ export async function studentSignIn(formData: FormData) {
     .maybeSingle();
 
   if (!credentials || !(await bcrypt.compare(parsed.data.pin, credentials.pin_hash))) {
-    withError("학급 코드, 학생 아이디 또는 비밀번호를 확인하세요.");
+    withError("학급 코드, 번호, 이름 또는 비밀번호를 확인하세요.");
   }
 
   await createStudentSession(student.id);

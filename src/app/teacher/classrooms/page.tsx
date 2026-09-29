@@ -2,16 +2,17 @@ import Link from "next/link";
 
 import { requireTeacher } from "@/lib/auth/teacher";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
+import { PendingSubmitButton } from "@/components/pending-submit-button";
 
 import { createClassroom } from "../actions";
 
-type SearchParams = Promise<{ error?: string }>;
+type SearchParams = Promise<{ error?: string; notice?: string }>;
 
 export const dynamic = "force-dynamic";
 
 export default async function ClassroomsPage({ searchParams }: { searchParams: SearchParams }) {
   const teacher = await requireTeacher();
-  const { error } = await searchParams;
+  const { error, notice } = await searchParams;
   const admin = createSupabaseAdminClient();
   const { data: classrooms, error: classroomsError } = await admin
     .from("classrooms")
@@ -25,17 +26,23 @@ export default async function ClassroomsPage({ searchParams }: { searchParams: S
       <div className="section-heading page-title"><div><span className="eyebrow">CLASSROOM</span><h1>학급과 학생</h1><p className="muted">수업을 함께할 학급을 만들고 학생을 초대하세요.</p></div></div>
       <div className="classroom-grid">
       <form action={createClassroom} className="card form-grid">
-        <h2>새 학급 만들기</h2><p className="muted">학급을 만들면 학생 로그인에 사용할 학급 코드가 발급됩니다.</p>
+        <h2>새 학급 만들기</h2><p className="muted">학생이 기억하기 쉬운 학급 코드도 직접 정할 수 있어요.</p>
         {error ? <p className="danger" role="alert">{error}</p> : null}
+        {notice ? <p className="notice">{notice}</p> : null}
         <label>
           학급 이름
-          <input name="name" placeholder="예: 3학년 2반" maxLength={60} required />
+          <input name="name" placeholder="예: 3학년 1반" maxLength={60} required />
         </label>
         <label>
           학년도 (선택)
           <input name="schoolYear" placeholder="예: 2026" maxLength={20} />
         </label>
-        <button type="submit">학급 만들기 <span aria-hidden>→</span></button>
+        <label>
+          학급 코드
+          <input name="joinCode" placeholder="예: WKG301" autoCapitalize="characters" maxLength={12} required />
+          <span className="muted">영문 대문자와 숫자 4~12자</span>
+        </label>
+        <PendingSubmitButton pendingLabel="학급을 만들고 있어요…">학급 만들기 <span aria-hidden>→</span></PendingSubmitButton>
       </form>
 
       <div className="card">

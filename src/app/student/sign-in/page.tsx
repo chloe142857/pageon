@@ -21,8 +21,12 @@ export default async function StudentSignInPage({ searchParams }: { searchParams
           <input name="classroomCode" autoCapitalize="characters" autoComplete="off" required />
         </label>
         <label>
-          나의 아이디
-          <input name="studentIdentifier" autoCapitalize="characters" autoComplete="username" required />
+          번호
+          <input name="studentNumber" type="number" min={1} max={9999} inputMode="numeric" autoComplete="username" required />
+        </label>
+        <label>
+          이름
+          <input name="displayName" autoComplete="name" required />
         </label>
         <label>
           비밀번호 (숫자 4~8자리)

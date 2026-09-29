@@ -3,8 +3,9 @@ import { notFound } from "next/navigation";
 
 import { requireTeacher } from "@/lib/auth/teacher";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
+import { PendingSubmitButton } from "@/components/pending-submit-button";
 
-import { createStudent, updateClassroom, updateStudent } from "../../actions";
+import { createStudent, deleteClassroom, importStudents, updateClassroom, updateStudent } from "../../actions";
 
 type PageProps = {
   params: Promise<{ classroomId: string }>;
@@ -38,7 +39,7 @@ export default async function ClassroomDetailPage({ params, searchParams }: Page
   return (
     <section>
       <p className="back-link"><Link href="/teacher/classrooms">← 학급 목록</Link></p>
-      <div className="section-heading page-title"><div><span className="eyebrow">CLASSROOM DETAILS</span><h1>{classroom.name}</h1><p className="muted">학생 {students?.length ?? 0}명 · 학급 코드 <strong>{classroom.join_code}</strong></p></div></div>
+      <div className="section-heading page-title"><div><span className="eyebrow">CLASSROOM DETAILS</span><h1>{classroom.name}</h1><p className="muted">학생 {students?.length ?? 0}명 · 학급 코드 <strong>{classroom.join_code}</strong></p></div><form action={deleteClassroom}><input type="hidden" name="classroomId" value={classroom.id} /><PendingSubmitButton className="danger-button" pendingLabel="학급을 삭제하고 있어요…" confirmMessage="이 학급과 제출 기록이 없는 학생 정보가 삭제됩니다. 계속할까요?">학급 삭제</PendingSubmitButton></form></div>
       {error ? <p className="danger" role="alert">{error}</p> : null}
       {notice ? <p className="notice">{notice}</p> : null}
 
@@ -53,8 +54,12 @@ export default async function ClassroomDetailPage({ params, searchParams }: Page
           학년도
           <input name="schoolYear" defaultValue={classroom.school_year} maxLength={20} />
         </label>
-        <p className="notice">학생에게 알려줄 학급 코드: <strong>{classroom.join_code}</strong></p>
-        <button type="submit">학급 정보 저장</button>
+        <label>
+          학급 코드
+          <input name="joinCode" defaultValue={classroom.join_code} autoCapitalize="characters" maxLength={12} required />
+        </label>
+        <p className="notice">학생은 학급 코드, 번호, 이름, 비밀번호로 로그인합니다.</p>
+        <PendingSubmitButton pendingLabel="학급 정보를 저장하고 있어요…">학급 정보 저장</PendingSubmitButton>
       </form>
 
       <form action={createStudent} className="card form-grid">
@@ -70,19 +75,19 @@ export default async function ClassroomDetailPage({ params, searchParams }: Page
             <input name="studentNumber" type="number" min={1} max={9999} required />
           </label>
         </div>
-        <div className="two-column">
-          <label>
-            학생 아이디
-            <input name="studentIdentifier" placeholder="예: KIM01" maxLength={32} required />
-          </label>
-          <label>
+        <label>
             숫자 비밀번호 (4~8자리)
             <input name="pin" type="password" inputMode="numeric" pattern="[0-9]{4,8}" minLength={4} maxLength={8} required />
-          </label>
-        </div>
-        <button type="submit">학생 등록</button>
+        </label>
+        <PendingSubmitButton pendingLabel="학생을 등록하고 있어요…">학생 등록</PendingSubmitButton>
       </form>
       </div>
+
+      <section className="card form-grid">
+        <div><h2>학생 명단 한 번에 등록하기</h2><p className="muted">양식을 내려받아 학생번호, 학생이름, 비밀번호를 입력한 뒤 CSV 파일로 올려 주세요.</p></div>
+        <a className="button-link secondary-link template-link" href="/api/classrooms/template">명단 양식 내려받기</a>
+        <form action={importStudents} className="form-grid" encType="multipart/form-data"><input type="hidden" name="classroomId" value={classroom.id} /><label>작성한 명단 파일<input name="studentList" type="file" accept=".csv,text/csv" required /></label><PendingSubmitButton pendingLabel="학생 명단을 등록하고 있어요…">학생 명단 등록</PendingSubmitButton></form>
+      </section>
 
       <div className="card">
         <h2>등록 학생</h2>
@@ -103,20 +108,14 @@ export default async function ClassroomDetailPage({ params, searchParams }: Page
                     <input name="studentNumber" type="number" defaultValue={student.student_number} min={1} max={9999} required />
                   </label>
                 </div>
-                <div className="two-column">
-                  <label>
-                    학생 아이디
-                    <input name="studentIdentifier" defaultValue={student.student_identifier} maxLength={32} required />
-                  </label>
-                  <label>
+                <label>
                     새 숫자 비밀번호 (변경할 때만 입력)
                     <input name="pin" type="password" inputMode="numeric" pattern="[0-9]{4,8}" minLength={4} maxLength={8} />
-                  </label>
-                </div>
+                </label>
                 <label>
                   <span><input name="active" type="checkbox" defaultChecked={student.active} /> 학생 로그인 허용</span>
                 </label>
-                <button type="submit">학생 정보 저장</button>
+                <PendingSubmitButton pendingLabel="학생 정보를 저장하고 있어요…">학생 정보 저장</PendingSubmitButton>
               </form>
             ))}
           </div>

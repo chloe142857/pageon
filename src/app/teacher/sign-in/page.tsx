@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { teacherAuthenticate } from "./actions";
+import { resendTeacherConfirmation, teacherAuthenticate } from "./actions";
 
 type SearchParams = Promise<{ error?: string; notice?: string }>;
 
@@ -26,6 +26,12 @@ export default async function TeacherSignInPage({ searchParams }: { searchParams
           <button type="submit" name="intent" value="sign-in">로그인</button>
           <button type="submit" name="intent" value="sign-up" className="secondary">교사 계정 만들기</button>
         </div>
+      </form>
+      <form action={resendTeacherConfirmation} className="card form-grid">
+        <h2>인증 이메일이 오지 않았나요?</h2>
+        <p className="muted">가입할 때 사용한 이메일로 새 인증 링크를 보냅니다.</p>
+        <label>가입 이메일<input name="email" type="email" autoComplete="email" required /></label>
+        <button type="submit" className="secondary">인증 이메일 다시 보내기</button>
       </form>
       <p><Link href="/student/sign-in">학생 로그인으로 이동</Link></p>
     </main>

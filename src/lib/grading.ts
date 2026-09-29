@@ -106,23 +106,24 @@ const semanticOutputSchema = z.object({
   needs_teacher_review: z.boolean(),
 });
 
-function responseText(payload: unknown) {
+function chatCompletionText(payload: unknown) {
   if (!payload || typeof payload !== "object") return null;
-  const record = payload as { output_text?: unknown; output?: unknown };
-  if (typeof record.output_text === "string") return record.output_text;
-  if (!Array.isArray(record.output)) return null;
-  for (const item of record.output) {
-    if (!item || typeof item !== "object") continue;
-    const content = (item as { content?: unknown }).content;
-    if (!Array.isArray(content)) continue;
-    for (const part of content) {
-      if (part && typeof part === "object" && (part as { type?: unknown }).type === "output_text") {
-        const text = (part as { text?: unknown }).text;
-        if (typeof text === "string") return text;
-      }
-    }
-  }
-  return null;
+  const choices = (payload as { choices?: unknown }).choices;
+  if (!Array.isArray(choices)) return null;
+  const content = (choices[0] as { message?: { content?: unknown } } | undefined)?.message?.content;
+  return typeof content === "string" ? content : null;
+}
+
+function gradingModels(primaryModel: string) {
+  const fallbacks = (process.env.UPSTAGE_GRADING_FALLBACK_MODELS || "solar-pro3,solar-mini4")
+    .split(",")
+    .map((model) => model.trim())
+    .filter(Boolean);
+  return [...new Set([primaryModel, ...fallbacks])];
+}
+
+function shouldTryFallback(status: number) {
+  return status === 400 || status === 408 || status === 413 || status === 429 || status >= 500;
 }
 
 async function semanticGrade(input: GradeInput): Promise<GradeDecision> {
@@ -130,31 +131,29 @@ async function semanticGrade(input: GradeInput): Promise<GradeDecision> {
     return reviewDecision("unreadable", 0, "OCR 결과가 없거나 인식에 실패했습니다. 실제 답안 이미지를 확인하세요.", "unreadable");
   }
 
-  const apiKey = process.env.OPENAI_API_KEY;
-  const modelName = process.env.OPENAI_GRADING_MODEL;
+  const apiKey = process.env.UPSTAGE_API_KEY;
+  const modelName = process.env.UPSTAGE_GRADING_MODEL;
+  const apiBaseUrl = process.env.UPSTAGE_API_BASE_URL || "https://api.upstage.ai/v1";
   if (!apiKey || !modelName) {
     return reviewDecision("unreadable", 0, "AI 의미 채점이 설정되지 않았습니다. 실제 답안 이미지를 교사가 확인하세요.", "semantic_unavailable");
   }
 
-  try {
-    const response = await fetch("https://api.openai.com/v1/responses", {
+  const models = gradingModels(modelName);
+  for (const candidateModel of models) {
+    try {
+      const response = await fetch(`${apiBaseUrl.replace(/\/$/, "")}/chat/completions`, {
       method: "POST",
       headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: modelName,
-        store: false,
-        max_output_tokens: 250,
-        instructions: "You grade a Korean elementary mathematics constructed response. Evaluate only the supplied OCR text against the question, expected answer, and teacher explanation. Return the requested JSON. reasoning_summary must be a brief teacher-facing verdict, not step-by-step hidden reasoning. Set needs_teacher_review true whenever the OCR text is ambiguous, incomplete, or the answer needs human judgment.",
-        input: JSON.stringify({
-          question: input.questionText,
-          expected_answer: input.expectedAnswer,
-          teacher_explanation: input.explanation,
-          student_ocr_answer: input.recognizedText,
-          recognition_confidence: input.recognitionConfidence,
-        }),
-        text: {
-          format: {
-            type: "json_schema",
+        model: candidateModel,
+        max_tokens: 250,
+        messages: [
+          { role: "system", content: "You grade a Korean elementary mathematics constructed response. Evaluate only the supplied OCR text against the question, expected answer, and teacher explanation. Return the requested JSON. reasoning_summary must be a brief teacher-facing verdict, not step-by-step hidden reasoning. Set needs_teacher_review true whenever the OCR text is ambiguous, incomplete, or the answer needs human judgment." },
+          { role: "user", content: JSON.stringify({ question: input.questionText, expected_answer: input.expectedAnswer, teacher_explanation: input.explanation, student_ocr_answer: input.recognizedText, recognition_confidence: input.recognitionConfidence }) },
+        ],
+        response_format: {
+          type: "json_schema",
+          json_schema: {
             name: "constructed_response_grade",
             strict: true,
             schema: {
@@ -172,23 +171,28 @@ async function semanticGrade(input: GradeInput): Promise<GradeDecision> {
         },
       }),
       signal: AbortSignal.timeout(20_000),
-    });
-    if (!response.ok) throw new Error(`AI 채점 요청 실패 (${response.status})`);
-    const parsed = semanticOutputSchema.parse(JSON.parse(responseText(await response.json()) ?? "null"));
-    const lowRecognition = (input.recognitionConfidence ?? 0) < AUTO_CONFIRM_RECOGNITION_CONFIDENCE;
-    const needsTeacherReview = parsed.needs_teacher_review || lowRecognition;
-    return {
-      predictedResult: parsed.predicted_result,
-      confidence: Number(parsed.confidence.toFixed(4)),
-      reasoningSummary: lowRecognition ? `${parsed.reasoning_summary} OCR 신뢰도가 낮아 교사 확인이 필요합니다.` : parsed.reasoning_summary,
-      needsTeacherReview,
-      gradingStatus: needsTeacherReview ? "REVIEW_REQUIRED" : "AUTO_CONFIRMED",
-      gradingStrategy: "semantic_ai",
-      modelName,
-    };
-  } catch {
-    return reviewDecision("unreadable", 0, "AI 의미 채점에 실패했습니다. 실제 답안 이미지를 교사가 확인하세요.", "semantic_unavailable", modelName);
+      });
+      if (!response.ok) {
+        if (shouldTryFallback(response.status) && candidateModel !== models.at(-1)) continue;
+        throw new Error(`AI 채점 요청 실패 (${response.status})`);
+      }
+      const parsed = semanticOutputSchema.parse(JSON.parse(chatCompletionText(await response.json()) ?? "null"));
+      const lowRecognition = (input.recognitionConfidence ?? 0) < AUTO_CONFIRM_RECOGNITION_CONFIDENCE;
+      const needsTeacherReview = parsed.needs_teacher_review || lowRecognition;
+      return {
+        predictedResult: parsed.predicted_result,
+        confidence: Number(parsed.confidence.toFixed(4)),
+        reasoningSummary: lowRecognition ? `${parsed.reasoning_summary} OCR 신뢰도가 낮아 교사 확인이 필요합니다.` : parsed.reasoning_summary,
+        needsTeacherReview,
+        gradingStatus: needsTeacherReview ? "REVIEW_REQUIRED" : "AUTO_CONFIRMED",
+        gradingStrategy: "semantic_ai",
+        modelName: candidateModel,
+      };
+    } catch {
+      if (candidateModel !== models.at(-1)) continue;
+    }
   }
+  return reviewDecision("unreadable", 0, "AI 의미 채점에 실패했습니다. 실제 답안 이미지를 교사가 확인하세요.", "semantic_unavailable", models.at(-1) ?? modelName);
 }
 
 export async function gradeAnswer(input: GradeInput): Promise<GradeDecision> {

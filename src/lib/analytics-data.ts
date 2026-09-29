@@ -52,13 +52,21 @@ export async function loadTeacherAnalytics(teacherId: string, filters: Analytics
   if (filters.unitName) worksheetQuery = worksheetQuery.eq("unit_name", filters.unitName);
   if (filters.worksheetId) worksheetQuery = worksheetQuery.eq("id", filters.worksheetId);
   const { data: worksheetRows } = await worksheetQuery;
-  const worksheets = (worksheetRows ?? []).map((worksheet): AnalyticsWorksheet => ({ id: worksheet.id, title: worksheet.title, gradeBand: worksheet.grade_band, semester: worksheet.semester, area: worksheet.area, unitName: worksheet.unit_name }));
-  const worksheetIds = worksheets.map((worksheet) => worksheet.id);
-  const { data: questionRows } = worksheetIds.length
-    ? await admin.from("worksheet_questions").select("id, worksheet_id, question_number, question_text, score, achievement_standard_id").in("worksheet_id", worksheetIds).order("question_number")
+  const worksheetIds = (worksheetRows ?? []).map((worksheet) => worksheet.id);
+  const { data: worksheetStandardRows } = worksheetIds.length
+    ? await admin.from("worksheet_standards").select("worksheet_id, achievement_standard_id").in("worksheet_id", worksheetIds)
     : { data: [] };
-  const questions = (questionRows ?? []).filter((question) => !filters.standardId || question.achievement_standard_id === filters.standardId)
-    .map((question) => ({ id: question.id, worksheetId: question.worksheet_id, questionNumber: question.question_number, questionText: question.question_text, score: Number(question.score), achievementStandardId: question.achievement_standard_id }));
+  const worksheets = (worksheetRows ?? []).map((worksheet): AnalyticsWorksheet => ({
+    id: worksheet.id, title: worksheet.title, gradeBand: worksheet.grade_band, semester: worksheet.semester,
+    area: worksheet.area, unitName: worksheet.unit_name,
+    standardIds: (worksheetStandardRows ?? []).filter((row) => row.worksheet_id === worksheet.id).map((row) => row.achievement_standard_id),
+  }));
+  const matchingWorksheetIds = new Set(worksheets.filter((worksheet) => !filters.standardId || worksheet.standardIds.includes(filters.standardId)).map((worksheet) => worksheet.id));
+  const { data: questionRows } = worksheetIds.length
+    ? await admin.from("worksheet_questions").select("id, worksheet_id, question_number, question_text, score").in("worksheet_id", worksheetIds).order("question_number")
+    : { data: [] };
+  const questions = (questionRows ?? []).filter((question) => matchingWorksheetIds.has(question.worksheet_id))
+    .map((question) => ({ id: question.id, worksheetId: question.worksheet_id, questionNumber: question.question_number, questionText: question.question_text, score: Number(question.score) }));
   const questionIds = new Set(questions.map((question) => question.id));
   const studentIds = students.map((student) => student.id);
   let submissionRows: Array<{ id: string; worksheet_id: string; student_id: string; submitted_at: string | null }> = [];

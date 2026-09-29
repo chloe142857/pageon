@@ -10,7 +10,7 @@ export type PdfImportSuggestion = {
   unitName: string;
   lessonObjective: string;
   standardIds: string[];
-  questions: Array<{ type: QuestionType; questionText: string; page: number; achievementStandardId: string }>;
+  questions: Array<{ type: QuestionType; questionText: string; page: number }>;
 };
 
 function recommendGradeBand(text: string) {
@@ -53,7 +53,6 @@ export function analyzeWorksheetText(pages: string[], filename: string, standard
       type: recommendType(questionText),
       questionText: questionText.replace(/^\d{1,2}[.)、]\s*/, "") || "원본 PDF 문항을 확인해 입력하세요.",
       page: pageIndex + 1,
-      achievementStandardId: standard?.id ?? "",
     }));
   }).slice(0, 30);
   return {
@@ -64,7 +63,7 @@ export function analyzeWorksheetText(pages: string[], filename: string, standard
     unitName: "",
     lessonObjective: "원본 PDF의 차시 목표를 확인하여 입력하세요.",
     standardIds: standard ? [standard.id] : [],
-    questions: questions.length ? questions : [{ type: "short_answer", questionText: "원본 PDF의 문항을 확인하여 입력하세요.", page: 1, achievementStandardId: standard?.id ?? "" }],
+    questions: questions.length ? questions : [{ type: "short_answer", questionText: "원본 PDF의 문항을 확인하여 입력하세요.", page: 1 }],
   };
 }
 

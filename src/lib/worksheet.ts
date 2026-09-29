@@ -20,7 +20,6 @@ export type WorksheetQuestionInput = {
   answer: string;
   explanation: string;
   score: number;
-  achievementStandardId: string;
   page: number;
   answerBBox: NormalizedBox | null;
 };
@@ -47,7 +46,7 @@ const worksheetSchema = z.object({
   unitName: z.string().trim().max(120),
   lessonObjective: z.string().trim().min(1, "차시 목표를 입력하세요.").max(500),
   totalPages: z.coerce.number().int().min(1, "전체 페이지 수는 1 이상이어야 합니다.").max(30),
-  worksheetStandardIds: z.array(z.string().uuid()).min(1, "성취기준을 하나 이상 선택하세요."),
+  worksheetStandardIds: z.array(z.string().uuid()),
   questions: z.array(z.object({
     type: z.enum(questionTypes),
     category: z.enum([...questionTypes, "word_problem"]).optional(),
@@ -55,7 +54,6 @@ const worksheetSchema = z.object({
     answer: z.string().trim().min(1, "정답을 입력하세요.").max(2000),
     explanation: z.string().trim().max(4000),
     score: z.coerce.number().min(0, "배점은 0 이상이어야 합니다.").max(100),
-    achievementStandardId: z.string().uuid("문항 성취기준을 선택하세요."),
     page: z.coerce.number().int().min(1).max(100),
     answerBBox: z.object({
       x: z.number().min(0).max(1),
@@ -75,7 +73,6 @@ export function parseWorksheetFormData(formData: FormData): WorksheetInput {
     answer: formData.get(`question-${index}-answer`),
     explanation: formData.get(`question-${index}-explanation`) || "",
     score: formData.get(`question-${index}-score`),
-    achievementStandardId: formData.get(`question-${index}-standard`),
     page: formData.get(`question-${index}-page`),
     answerBBox: parseAnswerBBox(formData.get(`question-${index}-answer-bbox`)),
   }));
@@ -97,10 +94,7 @@ export function parseWorksheetFormData(formData: FormData): WorksheetInput {
     throw new Error(parsed.error.issues[0]?.message ?? "활동지 입력을 확인하세요.");
   }
 
-  const worksheetStandardIds = [...new Set([
-    ...parsed.data.worksheetStandardIds,
-    ...parsed.data.questions.map((question) => question.achievementStandardId),
-  ])];
+  const worksheetStandardIds = [...new Set(parsed.data.worksheetStandardIds)];
 
   const pageOutsideWorksheet = parsed.data.questions.find((question) => question.page > parsed.data.totalPages);
   if (pageOutsideWorksheet) throw new Error("문항 페이지는 전체 페이지 수보다 클 수 없습니다.");
@@ -123,10 +117,10 @@ function parseAnswerBBox(value: FormDataEntryValue | null): NormalizedBox | null
 
 export function buildStructuredContent(
   worksheet: Omit<WorksheetInput, "questions"> & { id: string; versionNumber: number; generationSource: GenerationSource },
-  questions: Array<WorksheetQuestionInput & { id: string; achievementStandardCode: string }>,
+  questions: Array<WorksheetQuestionInput & { id: string }>,
 ) {
   return {
-    schema_version: 1,
+    schema_version: 2,
     generation_source: worksheet.generationSource,
     worksheet: {
       worksheet_id: worksheet.id,
@@ -138,6 +132,7 @@ export function buildStructuredContent(
       unit_name: worksheet.unitName,
       lesson_objective: worksheet.lessonObjective,
       total_pages: worksheet.totalPages,
+      achievement_standard_ids: worksheet.worksheetStandardIds,
       version_number: worksheet.versionNumber,
     },
     questions: questions.map((question, index) => ({
@@ -149,7 +144,6 @@ export function buildStructuredContent(
       answer: question.answer,
       explanation: question.explanation,
       score: question.score,
-      achievement_standard: question.achievementStandardCode,
       page: question.page,
       regions: {
         coordinate_space: "normalized_0_to_1",

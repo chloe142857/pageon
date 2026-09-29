@@ -19,7 +19,7 @@ type Analysis = {
   unitName?: string;
   lessonObjective?: string;
   standardIds?: string[];
-  questions?: Array<{ type?: QuestionType; questionText?: string; page?: number; achievementStandardId?: string }>;
+  questions?: Array<{ type?: QuestionType; questionText?: string; page?: number }>;
 };
 
 function isQuestionType(value: unknown): value is QuestionType {
@@ -47,13 +47,8 @@ export default async function ImportWorksheetDetailPage({ params, searchParams }
       </section>
     );
   }
-  if (!standards?.length) {
-    return <section><p><Link href="/teacher/worksheets/import">← PDF 업로드</Link></p><p className="danger">성취기준 데이터가 없어 등록할 수 없습니다.</p></section>;
-  }
-
   const analysis = (pdfImport.analysis && typeof pdfImport.analysis === "object" ? pdfImport.analysis : {}) as Analysis;
-  const standardIds = (analysis.standardIds ?? []).filter((id) => standards.some((standard) => standard.id === id));
-  const defaultStandardId = standardIds[0] ?? standards[0].id;
+  const standardIds = (analysis.standardIds ?? []).filter((id) => (standards ?? []).some((standard) => standard.id === id));
   const initial = {
     title: analysis.title || pdfImport.original_filename.replace(/\.pdf$/i, ""),
     gradeBand: analysis.gradeBand || "3~4학년",
@@ -62,14 +57,13 @@ export default async function ImportWorksheetDetailPage({ params, searchParams }
     unitName: analysis.unitName || "",
     lessonObjective: analysis.lessonObjective || "원본 PDF의 차시 목표를 확인하여 입력하세요.",
     totalPages: pdfImport.page_count,
-    worksheetStandardIds: standardIds.length ? standardIds : [defaultStandardId],
+    worksheetStandardIds: standardIds,
     questions: (analysis.questions ?? []).map((question) => ({
       type: isQuestionType(question.type) ? question.type : "short_answer" as QuestionType,
       questionText: question.questionText || "원본 PDF 문항을 확인하여 입력하세요.",
       answer: "",
       explanation: "",
       score: 1,
-      achievementStandardId: standards.some((standard) => standard.id === question.achievementStandardId) ? question.achievementStandardId! : defaultStandardId,
       page: Math.min(Math.max(question.page ?? 1, 1), pdfImport.page_count),
       answerBBox: null,
     })),
@@ -83,7 +77,7 @@ export default async function ImportWorksheetDetailPage({ params, searchParams }
       {error ? <p className="danger" role="alert">{error}</p> : null}
       {notice ? <p className="notice">{notice}</p> : null}
       <div className="card"><p className="mock-notice">아래 내용은 원본에서 읽은 정보를 바탕으로 제안한 것입니다. 문항과 정답을 확인하고 필요한 부분을 고쳐 주세요.</p><details><summary>읽어 온 내용 살펴보기</summary><pre className="pdf-text-preview">{pdfImport.extracted_text.slice(0, 4000) || "글자를 읽지 못했습니다. 원본을 보고 문항을 입력해 주세요."}</pre></details></div>
-      <WorksheetEditor action={createWorksheetFromImport} importId={pdfImport.id} standards={standards} initial={initial} />
+      <WorksheetEditor action={createWorksheetFromImport} importId={pdfImport.id} standards={standards ?? []} initial={initial} />
     </section>
   );
 }

@@ -36,8 +36,8 @@ const labels: Record<QuestionCategory, string> = {
   word_problem: "문장제 문제",
 };
 
-function blankQuestion(standardId: string): QuestionDraft {
-  return { type: "short_answer", questionText: "", answer: "", explanation: "", score: 1, achievementStandardId: standardId, page: 1, answerBBox: null };
+function blankQuestion(): QuestionDraft {
+  return { type: "short_answer", questionText: "", answer: "", explanation: "", score: 1, page: 1, answerBBox: null };
 }
 
 function formatBBox(value: QuestionDraft["answerBBox"]) {
@@ -45,12 +45,11 @@ function formatBBox(value: QuestionDraft["answerBBox"]) {
 }
 
 export function WorksheetEditor({ action, worksheetId, importId, standards, initial }: Props) {
-  const defaultStandardId = standards[0]?.id ?? "";
   const initialGrade = initial?.curriculumGrade ?? initialGradeForBand(initial?.gradeBand || "3~4학년");
   const initialUnits = lessonsFor(initialGrade, initial?.semester || "1학기");
   const initialUnit = initialUnits.find((item) => item.unit_name === initial?.unitName);
   const initialLesson = initialUnit?.lessons.find((item) => item.content === initial?.lessonObjective);
-  const [questions, setQuestions] = useState<QuestionDraft[]>(initial?.questions?.length ? initial.questions : [blankQuestion(defaultStandardId)]);
+  const [questions, setQuestions] = useState<QuestionDraft[]>(initial?.questions?.length ? initial.questions : [blankQuestion()]);
   const [generationSource, setGenerationSource] = useState<GenerationSource>(initial?.generationSource ?? "manual");
   const [gradeBand, setGradeBand] = useState(initial?.gradeBand || "3~4학년");
   const [curriculumGrade, setCurriculumGrade] = useState(initialGrade);
@@ -60,7 +59,7 @@ export function WorksheetEditor({ action, worksheetId, importId, standards, init
   const [unitName, setUnitName] = useState(initial?.unitName || "");
   const [lessonObjective, setLessonObjective] = useState(initial?.lessonObjective || "");
   const [area, setArea] = useState(initial?.area || "");
-  const [selectedStandardIds, setSelectedStandardIds] = useState(initial?.worksheetStandardIds ?? (defaultStandardId ? [defaultStandardId] : []));
+  const [selectedStandardIds, setSelectedStandardIds] = useState(initial?.worksheetStandardIds ?? []);
   const curriculumUnits = useMemo(() => lessonsFor(curriculumGrade, semester), [curriculumGrade, semester]);
   const selectedUnit = curriculumUnits.find((unit) => unit.unit_number === Number(selectedUnitNumber));
   const selectedLesson = selectedUnit?.lessons.find((item) => item.lesson_number === Number(selectedLessonNumber));
@@ -110,7 +109,6 @@ export function WorksheetEditor({ action, worksheetId, importId, standards, init
       setArea(nextArea);
       const best = relatedStandards(standards, curriculumGrade, nextArea, selectedUnit.unit_name, lesson.content)[0];
       setSelectedStandardIds(best ? [best.id] : []);
-      if (best) setQuestions((current) => current.map((question) => ({ ...question, achievementStandardId: best.id })));
     }
   }
 
@@ -120,7 +118,7 @@ export function WorksheetEditor({ action, worksheetId, importId, standards, init
       {importId ? <input type="hidden" name="importId" value={importId} /> : null}
       <input type="hidden" name="generationSource" value={generationSource} />
       <div className="card form-grid">
-        <div className="section-heading"><div><h2>활동지 기본 정보</h2><p className="muted">성취기준과 차시 목표를 먼저 정합니다.</p></div></div>
+        <div className="section-heading"><div><h2>활동지 기본 정보</h2><p className="muted">차시 목표를 정하고, 필요하면 활동지 성취기준을 선택하세요.</p></div></div>
         {isMock ? <p className="mock-notice">이 활동지에는 예시 문항이 포함되어 있습니다. 사용 전에 내용을 확인해 주세요.</p> : null}
         {isPdfImport ? <p className="mock-notice">업로드한 자료를 바탕으로 준비한 초안입니다. 원본과 비교하며 문항, 정답, 성취기준을 확인해 주세요.</p> : null}
         <label>활동지 제목<input name="title" defaultValue={initial?.title} maxLength={120} required /></label>
@@ -132,16 +130,16 @@ export function WorksheetEditor({ action, worksheetId, importId, standards, init
         <div className="two-column"><label>단원<select value={selectedUnitNumber} onChange={(event) => selectUnit(event.target.value)}><option value="">단원 선택</option>{curriculumUnits.map((unit) => <option key={unit.unit_number} value={unit.unit_number}>{unit.unit_number}. {unit.unit_name}</option>)}</select></label><label>차시<select value={selectedLessonNumber} onChange={(event) => selectLesson(event.target.value)} disabled={!selectedUnit}><option value="">차시 선택</option>{selectedUnit?.lessons.map((lesson) => <option key={lesson.lesson_number} value={lesson.lesson_number}>{lesson.lesson_number}차시 · {lesson.content}</option>)}</select></label></div>
         {selectedLesson ? <p className="muted">선택한 차시: {selectedLesson.content}</p> : null}
         <div className="two-column">
-          <label>영역<select name="area" value={area} onChange={(event) => { const nextArea = event.target.value; setArea(nextArea); const best = relatedStandards(standards, curriculumGrade, nextArea, unitName, lessonObjective)[0]; setSelectedStandardIds(best ? [best.id] : []); if (best) setQuestions((current) => current.map((question) => ({ ...question, achievementStandardId: best.id }))); }}><option value="">영역 선택</option>{mathAreas.map((value) => <option key={value}>{value}</option>)}</select></label>
+          <label>영역<select name="area" value={area} onChange={(event) => { const nextArea = event.target.value; setArea(nextArea); const best = relatedStandards(standards, curriculumGrade, nextArea, unitName, lessonObjective)[0]; setSelectedStandardIds(best ? [best.id] : []); }}><option value="">영역 선택</option>{mathAreas.map((value) => <option key={value}>{value}</option>)}</select></label>
           <label>단원<input name="unitName" value={unitName} onChange={(event) => setUnitName(event.target.value)} placeholder="예: 나눗셈" maxLength={120} /></label>
         </div>
         <label>차시 목표<textarea name="lessonObjective" value={lessonObjective} onChange={(event) => setLessonObjective(event.target.value)} maxLength={500} required /></label>
         <label>전체 페이지 수<input name="totalPages" type="number" min="1" max="30" defaultValue={initial?.totalPages ?? 1} required /><span className="muted">학생 촬영 화면에서 이 수만큼 페이지를 순서대로 제출합니다.</span></label>
-        <div className="standards-field"><span className="field-label">관련 성취기준</span><div className="standards-list">{related.length ? related.map((standard) => <label className="standard-option" key={standard.id}><input name="worksheetStandardIds" type="checkbox" value={standard.id} checked={selectedStandardIds.includes(standard.id)} onChange={(event) => setSelectedStandardIds((current) => event.target.checked ? [...current, standard.id] : current.filter((id) => id !== standard.id))} /><span><strong>[{standard.code}]</strong> {standard.description}</span></label>) : <p className="muted">학년과 영역을 선택하면 관련 기준이 나타납니다.</p>}</div></div>
+        <div className="standards-field"><span className="field-label">활동지 성취기준 <small>(선택)</small></span><div className="standards-list">{related.length ? related.map((standard) => <label className="standard-option" key={standard.id}><input name="worksheetStandardIds" type="checkbox" value={standard.id} checked={selectedStandardIds.includes(standard.id)} onChange={(event) => setSelectedStandardIds((current) => event.target.checked ? [...current, standard.id] : current.filter((id) => id !== standard.id))} /><span><strong>[{standard.code}]</strong> {standard.description}</span></label>) : <p className="muted">학년과 영역을 선택하면 관련 기준이 나타납니다.</p>}</div><small className="muted">선택한 기준은 문항별이 아니라 활동지 전체에 연결됩니다.</small></div>
       </div>
 
       <div className="card form-grid">
-        <div className="section-heading"><div><h2>문항</h2><p className="muted">문항별 성취기준, 정답, 해설, 배점을 저장합니다.</p></div><button type="button" className="secondary" onClick={() => { setQuestions((current) => [...current, blankQuestion(current[0]?.achievementStandardId || defaultStandardId)]); markEdited(); }}>문항 추가</button></div>
+        <div className="section-heading"><div><h2>문항</h2><p className="muted">문항과 정답, 해설, 배점을 확인하고 수정하세요.</p></div><button type="button" className="secondary" onClick={() => { setQuestions((current) => [...current, blankQuestion()]); markEdited(); }}>문항 추가</button></div>
         <input type="hidden" name="questionCount" value={questions.length} />
         {questions.map((question, index) => (
           <fieldset className="question-card" key={index}>
@@ -153,7 +151,6 @@ export function WorksheetEditor({ action, worksheetId, importId, standards, init
             <label>문항 내용<textarea name={`question-${index}-text`} value={question.questionText} onChange={(event) => { updateQuestion(index, "questionText", event.target.value); markEdited(); }} required /></label>
             <div className="two-column"><label>정답<input name={`question-${index}-answer`} value={question.answer} onChange={(event) => { updateQuestion(index, "answer", event.target.value); markEdited(); }} required /></label><label>페이지<input name={`question-${index}-page`} type="number" min="1" max="100" value={question.page} onChange={(event) => { updateQuestion(index, "page", Number(event.target.value)); markEdited(); }} required /></label></div>
             <label>해설 (선택)<textarea name={`question-${index}-explanation`} value={question.explanation} onChange={(event) => { updateQuestion(index, "explanation", event.target.value); markEdited(); }} /></label>
-            <label>문항 성취기준<select name={`question-${index}-standard`} value={question.achievementStandardId} onChange={(event) => { updateQuestion(index, "achievementStandardId", event.target.value); markEdited(); }} required>{standards.map((standard) => <option key={standard.id} value={standard.id}>[{standard.code}] {standard.description}</option>)}</select></label>
             <details className="advanced-options"><summary>답안을 읽을 위치 조정 · 선택 사항</summary><label>답안 위치<input name={`question-${index}-answer-bbox`} defaultValue={formatBBox(question.answerBBox)} placeholder="예: 0.1, 0.5, 0.8, 0.2" /><span className="muted">별도로 지정할 위치가 없다면 비워 두세요. 지정할 때는 왼쪽, 위쪽, 너비, 높이를 0~1 사이 숫자로 입력합니다.</span></label></details>
             {questions.length > 1 ? <button type="button" className="secondary" onClick={() => { setQuestions((current) => current.filter((_, questionIndex) => questionIndex !== index)); markEdited(); }}>이 문항 삭제</button> : null}
           </fieldset>

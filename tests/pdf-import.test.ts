@@ -37,14 +37,14 @@ test("PDF 활동지 개발용 분석은 텍스트에서 기본 메타데이터�
   assert.equal(result.area, "수와 연산");
   assert.deepEqual(result.standardIds, [standards[0].id]);
   assert.equal(result.questions.length, 2);
-  assert.deepEqual(result.questions[0], { type: "calculation", questionText: "12 ÷ 3을 계산하세요.", page: 1, achievementStandardId: standards[0].id });
+  assert.deepEqual(result.questions[0], { type: "calculation", questionText: "12 ÷ 3을 계산하세요.", page: 1 });
   assert.equal(result.questions[1].type, "constructed_response");
 });
 
 test("PDF 활동지 개발용 분석은 문항 번호를 찾지 못하면 교사 입력용 자리표시자를 만든다", () => {
   const result = analyzeWorksheetText(["스캔된 활동지"], "스캔.pdf", standards);
 
-  assert.deepEqual(result.questions, [{ type: "short_answer", questionText: "원본 PDF의 문항을 확인하여 입력하세요.", page: 1, achievementStandardId: standards[0].id }]);
+  assert.deepEqual(result.questions, [{ type: "short_answer", questionText: "원본 PDF의 문항을 확인하여 입력하세요.", page: 1 }]);
 });
 
 test("PDF 텍스트 추출은 실제 1페이지 PDF의 페이지 수와 문구를 읽는다", async () => {

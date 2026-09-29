@@ -167,7 +167,24 @@ button.text-button:hover { color: var(--navy); background: #f1f6f7; box-shadow: 
 .score-history { display: grid; gap: 4px; width: 110px; }.score-history-bars { display: flex; align-items: end; gap: 3px; height: 36px; border-bottom: 1px solid #cbdcdd; }.score-history-bars span { flex: 1; min-width: 5px; max-width: 13px; border-radius: 3px 3px 0 0; background: var(--teal); }.score-history-bars span:last-child { background: var(--coral); }.score-history small { color: var(--muted); font-size: 10px; }
 
 /* Printing stays neutral and paper-sized */
-.print-page { max-width: 210mm; margin: 0 auto; padding: 20px; color: #111; background: #eef1f6; }.print-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 18px; }.worksheet-sheet { width: 210mm; min-height: 297mm; margin: 0 0 20px; padding: 14mm; background: white; box-shadow: 0 1px 5px #b9c0cc; display: flex; flex-direction: column; }.worksheet-header { display: flex; justify-content: space-between; gap: 16px; padding-bottom: 10px; border-bottom: 2px solid #111; }.worksheet-header h1 { margin: 0 0 8px; font-size: 24px; }.worksheet-header p { margin: 4px 0; }.qr-block { text-align: center; flex: 0 0 90px; }.qr-block img { width: 82px; height: 82px; }.qr-block small { display: block; }.worksheet-meta { padding: 10px 0; border-bottom: 1px solid #999; }.print-question { padding: 13px 0; border-bottom: 1px solid #bbb; break-inside: avoid; }.question-title { display: flex; justify-content: space-between; gap: 16px; white-space: pre-wrap; line-height: 1.45; }.question-title strong { font-weight: 600; }.answer-space { min-height: 20mm; margin-top: 9px; border: 1px dashed #9aa6b8; }.worksheet-sheet footer { margin-top: auto; padding-top: 10px; color: #555; font-size: 12px; }.print-question.word-problem .answer-space { min-height: 28mm; }.print-question.constructed-response .answer-space { min-height: 38mm; }
+.generation-progress { padding: 22px; border: 1px solid #b9e4e0; border-radius: 16px; background: #edf9f7; }
+.generation-progress-top { display: flex; justify-content: space-between; gap: 12px; color: var(--navy); }
+.generation-progress-track { height: 10px; margin: 12px 0; border-radius: 999px; background: #cfe7e5; overflow: hidden; }
+.generation-progress-track span { display: block; height: 100%; border-radius: inherit; background: var(--teal); transition: width 1s linear; }
+.generation-progress p { margin: 0 0 4px; }.generation-progress small { color: var(--muted); }
+.print-page { max-width: 210mm; margin: 0 auto; padding: 20px 0; color: #111; background: #eef1f6; }
+.print-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 18px; }
+.worksheet-sheet { width: 210mm; min-height: 297mm; margin: 0 0 20px; padding: 10mm; background: white; box-shadow: 0 1px 5px #b9c0cc; display: flex; flex-direction: column; font-size: 10.5pt; }
+.worksheet-header { display: flex; justify-content: space-between; gap: 12px; padding-bottom: 2mm; border-bottom: 1.5px solid #111; }
+.worksheet-header h1 { margin: 0 0 3px; font-size: 17pt; }.worksheet-header p { margin: 2px 0; font-size: 9pt; }
+.qr-block { text-align: center; flex: 0 0 21mm; }.qr-block img { width: 20mm; height: 20mm; }.qr-block small { display: block; font-size: 7pt; }
+.worksheet-meta { margin: 0; padding: 2mm 0; border-bottom: 1px solid #999; font-size: 9pt; }
+.print-question { padding: 1.7mm 0; border-bottom: 1px solid #ddd; break-inside: avoid; }
+.question-title { display: flex; justify-content: space-between; gap: 8px; white-space: pre-wrap; line-height: 1.3; }
+.question-title strong { font-weight: 600; }.question-title > span { flex: 0 0 auto; font-size: 8pt; }
+.answer-space { min-height: 7mm; margin-top: 1mm; border: 1px dashed #b1bbc8; }
+.print-question.word-problem .answer-space { min-height: 9mm; }.print-question.constructed-response .answer-space { min-height: 11mm; }
+.worksheet-sheet footer { margin-top: auto; padding-top: 2mm; color: #555; font-size: 8pt; }
 
 @media (max-width: 1080px) {
   .site-header-inner { flex-wrap: wrap; justify-content: space-between; padding: 13px 0 9px; }
@@ -212,6 +229,6 @@ button.text-button:hover { color: var(--navy); background: #f1f6f7; box-shadow: 
   html, body { width: 210mm; margin: 0; background: white; }
   .print-toolbar { display: none; }
   .print-page { width: 210mm; max-width: none; margin: 0; padding: 0; background: white; }
-  .worksheet-sheet { width: 210mm; height: 297mm; min-height: 0; margin: 0; padding: 14mm; box-shadow: none; break-after: page; page-break-after: always; }
+  .worksheet-sheet { width: 210mm; height: 297mm; min-height: 0; margin: 0; padding: 10mm; box-shadow: none; break-after: page; page-break-after: always; }
   .worksheet-sheet:last-of-type { break-after: auto; page-break-after: auto; }
 }

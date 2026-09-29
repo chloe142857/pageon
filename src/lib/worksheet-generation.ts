@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import type { QuestionCategory, QuestionType, WorksheetQuestionInput } from "./worksheet";
+import type { QuestionType, WorksheetQuestionInput } from "./worksheet";
 
 export const generationCategories = ["short_answer", "multiple_choice", "constructed_response", "calculation", "word_problem"] as const;
 export type GenerationCategory = (typeof generationCategories)[number];
@@ -10,7 +10,6 @@ const generatedQuestionSchema = z.object({
   question_text: z.string().trim().min(5).max(350),
   answer: z.string().trim().min(1).max(500),
   explanation: z.string().trim().min(1).max(1000),
-  standard_code: z.string().trim().min(1),
 });
 
 const generatedBatchSchema = z.object({ questions: z.array(generatedQuestionSchema) });
@@ -52,7 +51,6 @@ async function generateBatch(spec: GenerationSpec, category: GenerationCategory,
   const key = process.env.UPSTAGE_API_KEY;
   if (!key) throw new Error("Upstage API 키가 설정되지 않았습니다. 서버 환경 변수 UPSTAGE_API_KEY를 확인하세요.");
   const baseUrl = (process.env.UPSTAGE_API_BASE_URL || "https://api.upstage.ai/v1").replace(/\/$/, "");
-  const standardCodes = spec.standards.map((item) => item.code);
   const responseFormat = {
     type: "json_schema",
     json_schema: {
@@ -69,9 +67,8 @@ async function generateBatch(spec: GenerationSpec, category: GenerationCategory,
                 question_text: { type: "string" },
                 answer: { type: "string" },
                 explanation: { type: "string" },
-                standard_code: { type: "string", enum: standardCodes },
               },
-              required: ["question_text", "answer", "explanation", "standard_code"],
+              required: ["question_text", "answer", "explanation"],
               additionalProperties: false,
             },
           },
@@ -91,7 +88,7 @@ async function generateBatch(spec: GenerationSpec, category: GenerationCategory,
           model,
           max_tokens: 3600,
           messages: [
-            { role: "system", content: "초등 수학 교사용 종이 활동지 문항을 만든다. 주어진 학년·차시 목표·성취기준 안에서 정확한 수학 문제와 정답/해설을 작성한다. 요청 개수만큼 서로 다른 문항을 만든다. 문항 본문은 보기 포함 350자 이내로 짧게 쓴다. 객관식은 보기 4개와 정답 보기를 포함한다. 문장제는 실생활 상황에서 식을 세워 푸는 문제로 만들되, answer에는 자동 비교할 수 있는 최종 값과 단위만 적고 풀이식은 explanation에 적는다. 서술형은 풀이 또는 이유를 쓰게 한다. 단순 연산은 문맥 없는 계산식이다. JSON 형식으로만 응답한다." },
+            { role: "system", content: "초등 수학 교사용 종이 활동지 문항을 만든다. 주어진 학년·차시 목표에 맞춰 정확한 수학 문제와 정답/해설을 작성한다. 활동지 전체에 지정된 성취기준이 있으면 참고하되 문항마다 성취기준을 부여하지 않는다. 요청 개수만큼 서로 다른 문항을 만든다. A4 한 쪽에 10문항을 인쇄할 수 있도록 문항 본문은 보기 포함 180자 이내로 간결하게 쓴다. 객관식은 보기 4개와 정답 보기를 포함한다. 문장제는 실생활 상황에서 식을 세워 푸는 문제로 만들되, answer에는 자동 비교할 수 있는 최종 값과 단위만 적고 풀이식은 explanation에 적는다. 서술형은 풀이 또는 이유를 쓰게 한다. 단순 연산은 문맥 없는 계산식이다. JSON 형식으로만 응답한다." },
             { role: "user", content: JSON.stringify({ grade: spec.grade, semester: spec.semester, area: spec.area, unit: spec.unitName, lesson_objective: spec.lessonObjective, standards: spec.standards.map((item) => ({ code: item.code, description: item.description })), question_category: categoryLabels[category], count, batch_number: batchNumber }) },
           ],
           response_format: responseFormat,
@@ -106,7 +103,6 @@ async function generateBatch(spec: GenerationSpec, category: GenerationCategory,
       const payload = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
       const result = generatedBatchSchema.parse(JSON.parse(payload.choices?.[0]?.message?.content ?? "null"));
       if (result.questions.length !== count) throw new Error("요청한 문항 수와 AI 응답의 문항 수가 다릅니다.");
-      if (result.questions.some((item) => !standardCodes.includes(item.standard_code))) throw new Error("AI가 선택 범위 밖의 성취기준을 반환했습니다.");
       return { questions: result.questions, model };
     } catch (error) {
       lastError = error instanceof Error ? error.message : lastError;
@@ -119,29 +115,14 @@ function questionType(category: GenerationCategory): QuestionType {
   return category === "word_problem" ? "short_answer" : category;
 }
 
-function questionWeight(question: WorksheetQuestionInput) {
-  const category: QuestionCategory = question.category ?? question.type;
-  const base = category === "constructed_response" ? 2.5 : category === "word_problem" ? 1.5 : 1;
-  const extraText = Math.max(0, question.questionText.length - 80);
-  return Math.min(5, base + Math.ceil(extraText / 80) * 0.5);
-}
-
 export function paginateGeneratedQuestions(questions: WorksheetQuestionInput[]) {
-  let page = 1;
-  let used = 0;
-  return questions.map((question) => {
-    const weight = questionWeight(question);
-    if (used + weight > 5) { page += 1; used = 0; }
-    used += weight;
-    return { ...question, page };
-  });
+  return questions.map((question, index) => ({ ...question, page: Math.floor(index / 10) + 1 }));
 }
 
 export async function generateWorksheetQuestions(spec: GenerationSpec) {
   const requests = generationCategories.flatMap((category) => batches(category, spec.counts[category]));
   let batchNumber = 0;
   const results = await Promise.all(requests.map((request) => generateBatch(spec, request.category, request.count, ++batchNumber)));
-  const standardIdByCode = new Map(spec.standards.map((item) => [item.code, item.id]));
   const questions: WorksheetQuestionInput[] = results.flatMap((result, index) => result.questions.map((item) => {
     const category = requests[index].category;
     return {
@@ -151,7 +132,6 @@ export async function generateWorksheetQuestions(spec: GenerationSpec) {
       answer: item.answer,
       explanation: item.explanation,
       score: category === "constructed_response" ? 3 : category === "word_problem" ? 2 : 1,
-      achievementStandardId: standardIdByCode.get(item.standard_code)!,
       page: 1,
       answerBBox: null,
     };

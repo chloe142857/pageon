@@ -42,23 +42,23 @@ async function replaceWorksheetContent(
   generationMetadata?: { provider: string; models: string[] },
 ) {
   const standardIds = [...new Set(input.worksheetStandardIds)];
-  const { data: standards, error: standardsError } = await admin
-    .from("achievement_standards")
-    .select("id, code")
-    .in("id", standardIds);
+  const { data: standards, error: standardsError } = standardIds.length
+    ? await admin.from("achievement_standards").select("id, code").in("id", standardIds)
+    : { data: [], error: null };
 
   if (standardsError || !standards || standards.length !== standardIds.length) {
     throw new Error("선택한 성취기준을 찾을 수 없습니다.");
   }
 
-  const standardsById = new Map(standards.map((standard) => [standard.id, standard.code]));
   const { error: linkDeleteError } = await admin.from("worksheet_standards").delete().eq("worksheet_id", worksheetId);
   if (linkDeleteError) throw new Error("활동지 성취기준을 저장하지 못했습니다.");
 
-  const { error: linkError } = await admin.from("worksheet_standards").insert(
-    standardIds.map((achievementStandardId) => ({ worksheet_id: worksheetId, achievement_standard_id: achievementStandardId })),
-  );
-  if (linkError) throw new Error("활동지 성취기준을 저장하지 못했습니다.");
+  if (standardIds.length) {
+    const { error: linkError } = await admin.from("worksheet_standards").insert(
+      standardIds.map((achievementStandardId) => ({ worksheet_id: worksheetId, achievement_standard_id: achievementStandardId })),
+    );
+    if (linkError) throw new Error("활동지 성취기준을 저장하지 못했습니다.");
+  }
 
   const { error: questionDeleteError } = await admin.from("worksheet_questions").delete().eq("worksheet_id", worksheetId);
   if (questionDeleteError) throw new Error("기존 문항을 정리하지 못했습니다.");
@@ -73,12 +73,12 @@ async function replaceWorksheetContent(
       answer: question.answer,
       explanation: question.explanation,
       score: question.score,
-      achievement_standard_id: question.achievementStandardId,
+      achievement_standard_id: null,
       page: question.page,
       question_bbox: null,
       answer_bbox: question.answerBBox,
     })))
-    .select("id, question_number, type, question_text, answer, explanation, score, achievement_standard_id, page, answer_bbox");
+    .select("id, question_number, type, question_text, answer, explanation, score, page, answer_bbox");
 
   if (questionError || !questions) throw new Error("문항을 저장하지 못했습니다.");
 
@@ -92,8 +92,6 @@ async function replaceWorksheetContent(
       answer: question.answer,
       explanation: question.explanation,
       score: Number(question.score),
-      achievementStandardId: question.achievement_standard_id,
-      achievementStandardCode: standardsById.get(question.achievement_standard_id) ?? "",
       page: question.page,
       answerBBox: question.answer_bbox as { x: number; y: number; width: number; height: number } | null,
     })),
@@ -150,7 +148,7 @@ export async function uploadPdfImport(formData: FormData) {
     .from("achievement_standards")
     .select("id, code, description, grade_band, area")
     .order("code");
-  if (standardsError || !standards?.length) errorRedirect("/teacher/worksheets/import", "성취기준 데이터가 없어 PDF를 분석할 수 없습니다.");
+  if (standardsError) errorRedirect("/teacher/worksheets/import", "교육과정 정보를 불러오지 못했습니다.");
 
   let extracted: { pageCount: number; pages: string[] };
   try {
@@ -171,7 +169,7 @@ export async function uploadPdfImport(formData: FormData) {
   });
   if (uploadError) errorRedirect("/teacher/worksheets/import", `PDF 원본을 저장하지 못했습니다: ${uploadError.message}`);
 
-  const analysis = analyzeWorksheetText(extracted.pages, file.name, standards);
+  const analysis = analyzeWorksheetText(extracted.pages, file.name, standards ?? []);
   const { error: insertError } = await admin.from("worksheet_imports").insert({
     id: importId,
     teacher_id: teacher.id,
@@ -316,11 +314,10 @@ export async function generateWorksheet(_previous: { error: string }, formData: 
   if (!generationTotals.includes(total as (typeof generationTotals)[number]) || generationCategories.some((category) => !Number.isInteger(counts[category]) || counts[category] < 0 || counts[category] > total) || generationCategories.reduce((sum, category) => sum + counts[category], 0) !== total) {
     return { error: "유형별 문항 수 합계를 선택한 전체 문항 수와 같게 맞추세요." };
   }
-  if (!standardIds.length) return { error: "성취기준을 하나 이상 선택하세요." };
-
   const admin = createSupabaseAdminClient();
-  const { data: standards, error: standardsError } = await admin.from("achievement_standards")
-    .select("id, code, description, grade_band, area").in("id", standardIds);
+  const { data: standards, error: standardsError } = standardIds.length
+    ? await admin.from("achievement_standards").select("id, code, description, grade_band, area").in("id", standardIds)
+    : { data: [], error: null };
   if (standardsError || !standards || standards.length !== standardIds.length || standards.some((item) => item.grade_band !== gradeBandFor(grade) || item.area !== area)) {
     return { error: "선택한 학년·영역에 맞는 성취기준을 다시 선택하세요." };
   }

@@ -27,7 +27,7 @@ export default async function WorksheetDetailPage({ params, searchParams }: Page
   const [{ data: standards }, { data: worksheetStandards }, { data: questions }, { data: submissions }, { data: pdfImport }] = await Promise.all([
     admin.from("achievement_standards").select("id, code, description, grade_band, area").order("code"),
     admin.from("worksheet_standards").select("achievement_standard_id").eq("worksheet_id", worksheetId),
-    admin.from("worksheet_questions").select("type, question_text, answer, explanation, score, achievement_standard_id, page, answer_bbox").eq("worksheet_id", worksheetId).order("question_number"),
+    admin.from("worksheet_questions").select("type, question_text, answer, explanation, score, page, answer_bbox").eq("worksheet_id", worksheetId).order("question_number"),
     admin.from("submissions").select("id, image_processing_status, submitted_at, students(display_name, student_number)").eq("worksheet_id", worksheetId).eq("status", "submitted").order("created_at", { ascending: false }),
     admin.from("worksheet_imports").select("id, original_filename").eq("worksheet_id", worksheetId).maybeSingle(),
   ]);
@@ -46,7 +46,7 @@ export default async function WorksheetDetailPage({ params, searchParams }: Page
     lessonObjective: worksheet.lesson_objective,
     totalPages: worksheet.total_pages,
     worksheetStandardIds: worksheetStandards?.map((item) => item.achievement_standard_id) ?? [],
-    questions: (questions ?? []).map((question, index) => ({ type: question.type, category: contentQuestions[index]?.category === "word_problem" ? "word_problem" as const : question.type, questionText: question.question_text, answer: question.answer, explanation: question.explanation, score: Number(question.score), achievementStandardId: question.achievement_standard_id, page: question.page, answerBBox: question.answer_bbox as { x: number; y: number; width: number; height: number } | null })),
+    questions: (questions ?? []).map((question, index) => ({ type: question.type, category: contentQuestions[index]?.category === "word_problem" ? "word_problem" as const : question.type, questionText: question.question_text, answer: question.answer, explanation: question.explanation, score: Number(question.score), page: question.page, answerBBox: question.answer_bbox as { x: number; y: number; width: number; height: number } | null })),
     generationSource: worksheet.generation_source as "manual" | "mock" | "pdf_import",
   };
 
@@ -58,7 +58,7 @@ export default async function WorksheetDetailPage({ params, searchParams }: Page
       {notice ? <p className="notice">{notice}</p> : null}
       {worksheet.status === "draft" ? <form action={publishWorksheet} className="card publish-panel"><input type="hidden" name="worksheetId" value={worksheet.id} /><div><h2>인쇄할 준비가 되었나요?</h2><p className="muted">문항과 정답을 확인한 뒤 발행하면 학생 제출용 QR이 나타납니다.</p></div><button type="submit">활동지 발행하기</button></form> : <div className="card publish-panel"><div><h2>학생에게 나눠줄 수 있어요</h2><p className="muted">인쇄 화면에서 QR이 포함된 활동지를 저장하거나 출력하세요. 내용을 고치면 다시 발행해야 합니다.</p></div><Link className="button-link" href={`/teacher/worksheets/${worksheet.id}/print`}>인쇄 화면 열기</Link></div>}
       {pdfImport ? <p className="muted">원본: <Link href={`/teacher/worksheets/import/${pdfImport.id}`}>{pdfImport.original_filename}</Link></p> : null}
-      {standards?.length ? <WorksheetEditor action={saveWorksheet} worksheetId={worksheet.id} standards={standards} initial={initial} /> : null}
+      <WorksheetEditor action={saveWorksheet} worksheetId={worksheet.id} standards={standards ?? []} initial={initial} />
       <section className="card"><h2>학생 제출물</h2>{submissions?.length ? <ul className="list">{submissions.map((submission) => {
         const student = submission.students?.[0];
         return <li className="list-item" key={submission.id}><span><strong>{student?.display_name ?? "학생"}</strong> {student?.student_number ? `(${student.student_number}번)` : ""}<br /><span className="muted">{submission.image_processing_status === "completed" ? "답안 확인 가능" : submission.image_processing_status === "failed" ? "사진 확인 필요" : "사진 확인 중"} · {submission.submitted_at ? new Date(submission.submitted_at).toLocaleString("ko-KR") : "제출 대기"}</span></span><span className="inline-links"><Link href={`/teacher/submissions/${submission.id}`}>답안 보기</Link><Link href="/teacher/review">검토할 답안</Link></span></li>;

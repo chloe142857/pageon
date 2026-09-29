@@ -1,8 +1,8 @@
 import type { GradingResult } from "./grading";
 
 export type AnalyticsStudent = { id: string; classroomId: string; displayName: string; studentNumber: number; active: boolean };
-export type AnalyticsWorksheet = { id: string; title: string; gradeBand: string; semester: string; area: string; unitName: string };
-export type AnalyticsQuestion = { id: string; worksheetId: string; questionNumber: number; questionText: string; score: number; achievementStandardId: string };
+export type AnalyticsWorksheet = { id: string; title: string; gradeBand: string; semester: string; area: string; unitName: string; standardIds: string[] };
+export type AnalyticsQuestion = { id: string; worksheetId: string; questionNumber: number; questionText: string; score: number };
 export type AnalyticsSubmission = { id: string; worksheetId: string; studentId: string; submittedAt: string | null };
 export type AnalyticsAnswer = { submissionId: string; questionId: string; result: GradingResult; scoreAwarded: number; source: "teacher" | "auto" };
 export type AnalyticsStandard = { id: string; code: string; description: string };
@@ -64,6 +64,7 @@ function latestSubmissions(submissions: AnalyticsSubmission[]) {
 
 export function calculateAnalytics(input: AnalyticsInput) {
   const questionsById = new Map(input.questions.map((question) => [question.id, question]));
+  const worksheetById = new Map(input.worksheets.map((worksheet) => [worksheet.id, worksheet]));
   const standardsById = new Map(input.standards.map((standard) => [standard.id, standard]));
   const latest = latestSubmissions(input.submissions);
   const latestIds = new Set(latest.map((submission) => submission.id));
@@ -122,7 +123,10 @@ export function calculateAnalytics(input: AnalyticsInput) {
   }).sort((a, b) => (a.scoreRate ?? 101) - (b.scoreRate ?? 101));
 
   const standardMetrics = input.standards.map((standard) => {
-    const standardAnswers = answers.filter((answer) => questionsById.get(answer.questionId)?.achievementStandardId === standard.id);
+    const standardAnswers = answers.filter((answer) => {
+      const question = questionsById.get(answer.questionId);
+      return question && worksheetById.get(question.worksheetId)?.standardIds.includes(standard.id);
+    });
     const awarded = standardAnswers.reduce((sum, answer) => sum + answer.scoreAwarded, 0);
     const maximum = standardAnswers.reduce((sum, answer) => sum + (questionsById.get(answer.questionId)?.score ?? 0), 0);
     const scoreRate = percentage(awarded, maximum);
@@ -138,9 +142,11 @@ export function calculateAnalytics(input: AnalyticsInput) {
       for (const answer of answersBySubmission.get(submission.id) ?? []) {
         const question = questionsById.get(answer.questionId);
         if (!question) continue;
-        grouped.set(question.achievementStandardId, [...(grouped.get(question.achievementStandardId) ?? []), answer]);
-        if (answer.result === "incorrect" || answer.result === "unreadable") {
-          incorrectCounts.set(question.achievementStandardId, (incorrectCounts.get(question.achievementStandardId) ?? 0) + 1);
+        for (const standardId of worksheetById.get(question.worksheetId)?.standardIds ?? []) {
+          grouped.set(standardId, [...(grouped.get(standardId) ?? []), answer]);
+          if (answer.result === "incorrect" || answer.result === "unreadable") {
+            incorrectCounts.set(standardId, (incorrectCounts.get(standardId) ?? 0) + 1);
+          }
         }
       }
       for (const [standardId, groupedAnswers] of grouped) {

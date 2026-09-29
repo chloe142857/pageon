@@ -37,12 +37,12 @@ export default async function ClassroomDetailPage({ params, searchParams }: Page
 
   return (
     <section>
-      <p><Link href="/teacher/classrooms">← 학급 목록</Link></p>
-      <h1>{classroom.name}</h1>
+      <p className="back-link"><Link href="/teacher/classrooms">← 학급 목록</Link></p>
+      <div className="section-heading page-title"><div><span className="eyebrow">CLASSROOM DETAILS</span><h1>{classroom.name}</h1><p className="muted">학생 {students?.length ?? 0}명 · 학급 코드 <strong>{classroom.join_code}</strong></p></div></div>
       {error ? <p className="danger" role="alert">{error}</p> : null}
       {notice ? <p className="notice">{notice}</p> : null}
 
-      <form action={updateClassroom} className="card form-grid">
+      <div className="classroom-detail-grid"><form action={updateClassroom} className="card form-grid">
         <h2>학급 정보</h2>
         <input type="hidden" name="classroomId" value={classroom.id} />
         <label>
@@ -53,12 +53,12 @@ export default async function ClassroomDetailPage({ params, searchParams }: Page
           학년도
           <input name="schoolYear" defaultValue={classroom.school_year} maxLength={20} />
         </label>
-        <p className="muted">학생 로그인 학급 코드: <strong>{classroom.join_code}</strong></p>
+        <p className="notice">학생에게 알려줄 학급 코드: <strong>{classroom.join_code}</strong></p>
         <button type="submit">학급 정보 저장</button>
       </form>
 
       <form action={createStudent} className="card form-grid">
-        <h2>학생 등록</h2>
+        <h2>학생 추가하기</h2>
         <input type="hidden" name="classroomId" value={classroom.id} />
         <div className="two-column">
           <label>
@@ -72,16 +72,17 @@ export default async function ClassroomDetailPage({ params, searchParams }: Page
         </div>
         <div className="two-column">
           <label>
-            학생 식별자
+            학생 아이디
             <input name="studentIdentifier" placeholder="예: KIM01" maxLength={32} required />
           </label>
           <label>
-            PIN (숫자 4~8자리)
+            숫자 비밀번호 (4~8자리)
             <input name="pin" type="password" inputMode="numeric" pattern="[0-9]{4,8}" minLength={4} maxLength={8} required />
           </label>
         </div>
         <button type="submit">학생 등록</button>
       </form>
+      </div>
 
       <div className="card">
         <h2>등록 학생</h2>
@@ -104,11 +105,11 @@ export default async function ClassroomDetailPage({ params, searchParams }: Page
                 </div>
                 <div className="two-column">
                   <label>
-                    학생 식별자
+                    학생 아이디
                     <input name="studentIdentifier" defaultValue={student.student_identifier} maxLength={32} required />
                   </label>
                   <label>
-                    새 PIN (변경할 때만 입력)
+                    새 숫자 비밀번호 (변경할 때만 입력)
                     <input name="pin" type="password" inputMode="numeric" pattern="[0-9]{4,8}" minLength={4} maxLength={8} />
                   </label>
                 </div>

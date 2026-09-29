@@ -38,7 +38,7 @@ export async function studentSignIn(formData: FormData) {
     .maybeSingle();
 
   if (!classroom) {
-    withError("학급 코드, 학생 식별자 또는 PIN을 확인하세요.");
+    withError("학급 코드, 학생 아이디 또는 비밀번호를 확인하세요.");
   }
 
   const { data: student } = await admin
@@ -50,7 +50,7 @@ export async function studentSignIn(formData: FormData) {
     .maybeSingle();
 
   if (!student) {
-    withError("학급 코드, 학생 식별자 또는 PIN을 확인하세요.");
+    withError("학급 코드, 학생 아이디 또는 비밀번호를 확인하세요.");
   }
 
   const { data: credentials } = await admin
@@ -60,7 +60,7 @@ export async function studentSignIn(formData: FormData) {
     .maybeSingle();
 
   if (!credentials || !(await bcrypt.compare(parsed.data.pin, credentials.pin_hash))) {
-    withError("학급 코드, 학생 식별자 또는 PIN을 확인하세요.");
+    withError("학급 코드, 학생 아이디 또는 비밀번호를 확인하세요.");
   }
 
   await createStudentSession(student.id);

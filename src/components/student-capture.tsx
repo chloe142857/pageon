@@ -137,16 +137,18 @@ export function StudentCapture({ worksheetToken, totalPages }: Props) {
   const capturedCount = pages.filter(Boolean).length;
 
   if (completedSubmissionId) {
-    return <div className="card"><h2>제출되었습니다</h2><p>촬영 원본 {totalPages}페이지를 안전하게 저장했습니다.</p><p className="muted">제출 번호: {completedSubmissionId}</p></div>;
+    return <div className="card student-complete"><span className="complete-mark" aria-hidden>✓</span><h2>제출이 완료되었어요!</h2><p>활동지 {totalPages}페이지를 잘 받았습니다.</p><p className="muted">선생님이 답안을 확인할 때까지 잠시 기다려 주세요.</p></div>;
   }
 
   return (
     <section className="card capture-card">
-      <div className="section-heading"><div><h2>활동지 촬영</h2><p className="muted">{currentPage + 1} / {totalPages} 페이지 · {capturedCount}장 촬영됨</p></div><div className="capture-actions"><button type="button" className="secondary" onClick={() => void startCamera()} disabled={isStarting}>{cameraStarted ? "카메라 다시 시작" : "카메라 시작"}</button><button type="button" className="secondary" onClick={() => void switchCamera()} disabled={isStarting}>전면/후면 전환</button></div></div>
+      <div className="section-heading"><div><span className="eyebrow">STEP BY STEP</span><h2>{currentPage + 1}번째 페이지를 찍어 주세요</h2><p className="muted">전체 {totalPages}장 중 {capturedCount}장 촬영했어요.</p></div></div>
+      <div className="capture-progress" role="progressbar" aria-valuenow={capturedCount} aria-valuemin={0} aria-valuemax={totalPages} aria-label="촬영한 페이지"><span style={{ width: `${capturedCount / totalPages * 100}%` }} /></div>
+      <p className="muted">활동지 전체가 화면에 보이도록 밝은 곳에서 촬영해 주세요.</p>
+      <div className="capture-actions"><button type="button" className="secondary" onClick={() => void startCamera()} disabled={isStarting}>{cameraStarted ? "카메라 다시 켜기" : "카메라 켜기"}</button><button type="button" className="secondary" onClick={() => void switchCamera()} disabled={isStarting}>앞·뒤 카메라 바꾸기</button></div>
       <div className="camera-frame"><video ref={videoRef} autoPlay muted playsInline aria-label="카메라 미리보기" /></div>
       {cameraError ? <p className="danger" role="alert">{cameraError}</p> : null}
       <div className="capture-actions">
-        {pages[currentPage] ? <button type="button" className="secondary" onClick={() => replacePage(currentPage, null)}>이 페이지 다시 촬영</button> : null}
         <button type="button" onClick={capture} disabled={isStarting || !cameraStarted}>{pages[currentPage] ? `${currentPage + 1}페이지 다시 찍기` : `${currentPage + 1}페이지 촬영`}</button>
       </div>
       <div className="page-thumbnails" aria-label="페이지 미리보기">

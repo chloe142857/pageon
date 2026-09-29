@@ -14,15 +14,14 @@ export default async function ImportWorksheetPage({ searchParams }: PageProps) {
 
   return (
     <section>
-      <p><Link href="/teacher/worksheets">← 활동지 목록</Link></p>
-      <h1>기존 활동지 업로드하기</h1>
-      <p className="muted">기존 수학 활동지 PDF를 올리면 페이지 수와 텍스트를 읽어 교사용 편집 초안을 만듭니다.</p>
+      <p className="back-link"><Link href="/teacher/worksheets">← 활동지 목록</Link></p>
+      <div className="section-heading page-title"><div><span className="eyebrow">BRING YOUR WORKSHEET</span><h1>기존 활동지 올리기</h1><p className="muted">이미 가지고 계신 수학 활동지를 가져와 학생 제출에 활용하세요.</p></div></div>
       {error ? <p className="danger" role="alert">{error}</p> : null}
       <form action={uploadPdfImport} className="card form-grid">
-        <p className="mock-notice">현재 추천은 AI 확정 결과가 아닌 개발용 텍스트 분석입니다. 학년·성취기준·문항 유형·정답은 다음 화면에서 교사가 반드시 확인하고 수정합니다.</p>
+        <p className="mock-notice">PDF에서 읽을 수 있는 글자를 바탕으로 초안을 제안합니다. 학년, 문항, 정답과 성취기준은 원본과 비교해 꼭 확인해 주세요.</p>
         <label>수학 활동지 PDF<input name="pdf" type="file" accept="application/pdf,.pdf" required /></label>
-        <p className="muted">PDF만 가능 · 최대 10MB · 학생 개인정보는 업로드하지 마세요. 원본은 교사만 접근 가능한 비공개 저장소에 보관됩니다.</p>
-        <button type="submit">PDF 분석 후 편집하기</button>
+        <p className="muted">PDF 파일만 가능 · 최대 10MB · 학생 개인정보가 들어간 자료는 올리지 말아 주세요.</p>
+        <button type="submit">활동지 내용 확인하기 →</button>
       </form>
     </section>
   );

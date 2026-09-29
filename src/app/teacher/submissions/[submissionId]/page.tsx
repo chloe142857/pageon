@@ -32,7 +32,7 @@ export default async function TeacherSubmissionDetailPage({ params }: PageProps)
 
   const { data: pages } = await admin
     .from("submission_pages")
-    .select("id, page_number, original_storage_path, processed_storage_path, applied_transforms, submission_answers(id, crop_source, crop_bbox, recognized_text, recognition_confidence, recognition_engine, recognition_error, answer_storage_path, worksheet_questions(question_number, question_text))")
+    .select("id, page_number, original_storage_path, processed_storage_path, submission_answers(id, crop_source, recognized_text, recognition_confidence, recognition_error, answer_storage_path, worksheet_questions(question_number, question_text))")
     .eq("submission_id", submission.id)
     .order("page_number");
 
@@ -49,16 +49,14 @@ export default async function TeacherSubmissionDetailPage({ params }: PageProps)
 
   return (
     <section>
-      <p><Link href={`/teacher/worksheets/${submission.worksheet_id}`}>← 활동지 제출 목록</Link></p>
-      <h1>{worksheet?.title ?? "활동지"} 제출물</h1>
-      <p className="muted">{student?.display_name ?? "학생"} {student?.student_number ? `· ${student.student_number}번` : ""} · 처리 상태: {submission.image_processing_status}</p>
-      {submission.image_processing_error ? <p className="danger">처리 오류: {submission.image_processing_error}</p> : null}
+      <p className="back-link"><Link href={`/teacher/worksheets/${submission.worksheet_id}`}>← 활동지 제출 목록</Link></p>
+      <div className="section-heading page-title"><div><span className="eyebrow">STUDENT WORK</span><h1>{worksheet?.title ?? "활동지"} 제출물</h1><p className="muted">{student?.display_name ?? "학생"} {student?.student_number ? `· ${student.student_number}번` : ""} · {submission.image_processing_status === "completed" ? "답안을 확인할 수 있어요" : submission.image_processing_status === "failed" ? "사진 확인이 필요해요" : "사진을 확인하고 있어요"}</p></div></div>
+      {submission.image_processing_error ? <p className="danger">사진을 처리하는 중 문제가 생겼습니다. 원본 사진을 확인해 주세요.</p> : null}
       {pageViews.map((page) => <section className="card processed-page" key={page.id}>
         <h2>{page.page_number}페이지</h2>
-        <div className="processed-images"><div><h3>학생 원본</h3>{page.originalUrl ? <img src={page.originalUrl} alt={`${page.page_number}페이지 학생 원본`} /> : <p className="danger">원본을 불러오지 못했습니다.</p>}</div><div><h3>보정 처리본</h3>{page.processedUrl ? <img src={page.processedUrl} alt={`${page.page_number}페이지 보정 처리본`} /> : <p className="muted">처리 대기 또는 실패</p>}</div></div>
-        <details><summary>적용 처리 단계</summary><pre>{JSON.stringify(page.applied_transforms, null, 2)}</pre></details>
-        <h3>문항 답안 이미지와 인식 결과</h3>
-        {page.answers.length ? <div className="answer-review-grid">{page.answers.map((answer) => <article className="answer-review" key={answer.id}><h4>{answer.question?.question_number}번</h4><p className="muted">{answer.question?.question_text}</p>{answer.imageUrl ? <img src={answer.imageUrl} alt={`${answer.question?.question_number}번 답안`} /> : null}<p>OCR: <strong>{answer.recognized_text || "인식 결과 없음"}</strong></p><p className="muted">confidence: {answer.recognition_confidence ?? "-"} · {answer.recognition_engine} · {answer.crop_source === "template_bbox" ? "템플릿 답안 영역" : "페이지 전체 임시 crop"}</p>{answer.recognition_error ? <p className="danger">OCR 오류: {answer.recognition_error}</p> : null}</article>)}</div> : <p className="muted">이 페이지의 문항 답안은 아직 추출되지 않았습니다.</p>}
+        <div className="processed-images"><div><h3>학생이 찍은 사진</h3>{page.originalUrl ? <img src={page.originalUrl} alt={`${page.page_number}페이지 학생 원본`} /> : <p className="danger">원본을 불러오지 못했습니다.</p>}</div><div><h3>읽기 좋게 다듬은 사진</h3>{page.processedUrl ? <img src={page.processedUrl} alt={`${page.page_number}페이지 보정 처리본`} /> : <p className="muted">사진을 준비하고 있어요.</p>}</div></div>
+        <h3>문항별 답안</h3>
+        {page.answers.length ? <div className="answer-review-grid">{page.answers.map((answer) => <article className="answer-review" key={answer.id}><h4>{answer.question?.question_number}번</h4><p className="muted">{answer.question?.question_text}</p>{answer.imageUrl ? <img src={answer.imageUrl} alt={`${answer.question?.question_number}번 답안`} /> : null}<p>읽은 답: <strong>{answer.recognized_text || "아직 읽은 답이 없어요"}</strong></p><p className="muted">읽기 확실도: {answer.recognition_confidence === null ? "확인 중" : `${Math.round(Number(answer.recognition_confidence) * 100)}%`} · {answer.crop_source === "template_bbox" ? "답안 부분" : "사진 전체"} 확인</p>{answer.recognition_error ? <p className="danger">글씨를 읽기 어려워요. 사진을 직접 확인해 주세요.</p> : null}</article>)}</div> : <p className="muted">이 페이지의 답안을 확인하고 있어요.</p>}
       </section>)}
     </section>
   );

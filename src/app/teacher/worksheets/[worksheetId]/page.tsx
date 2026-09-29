@@ -52,16 +52,16 @@ export default async function WorksheetDetailPage({ params, searchParams }: Page
 
   return (
     <section>
-      <p><Link href="/teacher/worksheets">← 활동지 목록</Link></p>
-      <div className="section-heading"><div><h1>{worksheet.title}</h1><p className="muted">{worksheet.status === "published" ? `발행 v${worksheet.version_number}` : "초안"}{aiGenerated ? " · Upstage AI 생성" : ""}</p></div><Link className="button-link" href={`/teacher/worksheets/${worksheet.id}/print`}>{worksheet.status === "published" ? "인쇄용 PDF" : "인쇄 미리보기"}</Link></div>
+      <p className="back-link"><Link href="/teacher/worksheets">← 활동지 목록</Link></p>
+      <div className="section-heading page-title"><div><span className="eyebrow">WORKSHEET DETAILS</span><h1>{worksheet.title}</h1><p className="muted">{worksheet.status === "published" ? "발행된 활동지" : "작성 중인 활동지"}{aiGenerated ? " · 자동 생성" : ""}</p></div><Link className="button-link secondary-link" href={`/teacher/worksheets/${worksheet.id}/print`}>{worksheet.status === "published" ? "인쇄하기" : "인쇄 미리보기"}</Link></div>
       {error ? <p className="danger" role="alert">{error}</p> : null}
       {notice ? <p className="notice">{notice}</p> : null}
-      {worksheet.status === "draft" ? <form action={publishWorksheet} className="card"><input type="hidden" name="worksheetId" value={worksheet.id} /><p>발행하면 학생 개인정보가 없는 전용 QR과 인쇄용 PDF를 사용할 수 있습니다.</p><button type="submit">활동지 발행</button></form> : <div className="card"><p>QR 토큰은 발행된 활동지 전용입니다. 수정 후에는 초안으로 전환되며 다시 발행해야 합니다.</p><code>/submit/{worksheet.worksheet_token}</code></div>}
+      {worksheet.status === "draft" ? <form action={publishWorksheet} className="card publish-panel"><input type="hidden" name="worksheetId" value={worksheet.id} /><div><h2>인쇄할 준비가 되었나요?</h2><p className="muted">문항과 정답을 확인한 뒤 발행하면 학생 제출용 QR이 나타납니다.</p></div><button type="submit">활동지 발행하기</button></form> : <div className="card publish-panel"><div><h2>학생에게 나눠줄 수 있어요</h2><p className="muted">인쇄 화면에서 QR이 포함된 활동지를 저장하거나 출력하세요. 내용을 고치면 다시 발행해야 합니다.</p></div><Link className="button-link" href={`/teacher/worksheets/${worksheet.id}/print`}>인쇄 화면 열기</Link></div>}
       {pdfImport ? <p className="muted">원본: <Link href={`/teacher/worksheets/import/${pdfImport.id}`}>{pdfImport.original_filename}</Link></p> : null}
       {standards?.length ? <WorksheetEditor action={saveWorksheet} worksheetId={worksheet.id} standards={standards} initial={initial} /> : null}
       <section className="card"><h2>학생 제출물</h2>{submissions?.length ? <ul className="list">{submissions.map((submission) => {
         const student = submission.students?.[0];
-        return <li className="list-item" key={submission.id}><span><strong>{student?.display_name ?? "학생"}</strong> {student?.student_number ? `(${student.student_number}번)` : ""}<br /><span className="muted">이미지 처리: {submission.image_processing_status} · 제출 {submission.submitted_at ? new Date(submission.submitted_at).toLocaleString("ko-KR") : "대기"}</span></span><span className="inline-links"><Link href={`/teacher/submissions/${submission.id}`}>원본·답안 확인</Link><Link href="/teacher/review">검토 목록</Link></span></li>;
+        return <li className="list-item" key={submission.id}><span><strong>{student?.display_name ?? "학생"}</strong> {student?.student_number ? `(${student.student_number}번)` : ""}<br /><span className="muted">{submission.image_processing_status === "completed" ? "답안 확인 가능" : submission.image_processing_status === "failed" ? "사진 확인 필요" : "사진 확인 중"} · {submission.submitted_at ? new Date(submission.submitted_at).toLocaleString("ko-KR") : "제출 대기"}</span></span><span className="inline-links"><Link href={`/teacher/submissions/${submission.id}`}>답안 보기</Link><Link href="/teacher/review">검토할 답안</Link></span></li>;
       })}</ul> : <p className="muted">아직 제출물이 없습니다.</p>}</section>
     </section>
   );

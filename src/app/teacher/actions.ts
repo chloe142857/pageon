@@ -137,7 +137,7 @@ export async function createStudent(formData: FormData) {
 
   if (credentialError) {
     await admin.from("students").delete().eq("id", student.id);
-    errorRedirect(`/teacher/classrooms/${classroomId}`, "학생 PIN을 저장하지 못했습니다.");
+    errorRedirect(`/teacher/classrooms/${classroomId}`, "학생 비밀번호를 저장하지 못했습니다.");
   }
 
   revalidatePath("/teacher");
@@ -183,7 +183,7 @@ export async function updateStudent(formData: FormData) {
       .eq("student_id", studentId);
 
     if (credentialError) {
-      errorRedirect(`/teacher/classrooms/${classroomId}`, "학생 정보는 저장됐지만 PIN 변경에 실패했습니다.");
+      errorRedirect(`/teacher/classrooms/${classroomId}`, "학생 정보는 저장됐지만 비밀번호 변경에 실패했습니다.");
     }
   }
 

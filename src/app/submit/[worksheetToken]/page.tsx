@@ -1,5 +1,7 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 
+import { BrandLogo } from "@/components/brand-logo";
 import { StudentCapture } from "@/components/student-capture";
 import { getStudentSession } from "@/lib/auth/student";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
@@ -24,16 +26,20 @@ export default async function WorksheetSubmitEntryPage({ params }: PageProps) {
     const next = `/submit/${worksheetToken}`;
     return (
       <main className="page student-page">
+        <Link className="student-brand" href="/" aria-label="Page On 첫 화면"><BrandLogo /></Link>
+        <span className="eyebrow">ACTIVITY SHEET</span>
         <h1>{worksheet.title}</h1>
-        <div className="card"><p>{worksheet.grade_band} · {worksheet.semester}</p><p>{worksheet.lesson_objective}</p><a className="button-link" href={`/student/sign-in?next=${encodeURIComponent(next)}`}>학생 로그인 후 촬영하기</a></div>
+        <div className="card"><p className="muted">{worksheet.grade_band} · {worksheet.semester}</p><p>{worksheet.lesson_objective}</p><a className="button-link" href={`/student/sign-in?next=${encodeURIComponent(next)}`}>로그인하고 사진 제출하기 <span aria-hidden>→</span></a></div>
       </main>
     );
   }
 
   return (
     <main className="page student-page">
+      <Link className="student-brand" href="/" aria-label="Page On 첫 화면"><BrandLogo /></Link>
+      <span className="eyebrow">ACTIVITY SHEET</span>
       <h1>{worksheet.title}</h1>
-      <div className="card"><p>{student.display_name}님 · {worksheet.grade_band} · {worksheet.semester}</p><p>{worksheet.lesson_objective}</p></div>
+      <div className="student-welcome"><p><strong>{student.display_name} 학생</strong> · {worksheet.grade_band} · {worksheet.semester}</p><p>{worksheet.lesson_objective}</p></div>
       <StudentCapture worksheetToken={worksheetToken} totalPages={worksheet.total_pages} />
     </main>
   );

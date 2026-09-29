@@ -121,8 +121,8 @@ export function WorksheetEditor({ action, worksheetId, importId, standards, init
       <input type="hidden" name="generationSource" value={generationSource} />
       <div className="card form-grid">
         <div className="section-heading"><div><h2>활동지 기본 정보</h2><p className="muted">성취기준과 차시 목표를 먼저 정합니다.</p></div></div>
-        {isMock ? <p className="mock-notice">현재 문항은 AI 결과가 아닌 개발용 목 데이터입니다. 저장 전 교사가 내용을 수정하세요.</p> : null}
-        {isPdfImport ? <p className="mock-notice">기존 PDF에서 추천한 초안입니다. PDF 원본의 문항, 정답, 성취기준과 페이지를 교사가 확인·수정해야 합니다.</p> : null}
+        {isMock ? <p className="mock-notice">이 활동지에는 예시 문항이 포함되어 있습니다. 사용 전에 내용을 확인해 주세요.</p> : null}
+        {isPdfImport ? <p className="mock-notice">업로드한 자료를 바탕으로 준비한 초안입니다. 원본과 비교하며 문항, 정답, 성취기준을 확인해 주세요.</p> : null}
         <label>활동지 제목<input name="title" defaultValue={initial?.title} maxLength={120} required /></label>
         <input type="hidden" name="gradeBand" value={gradeBand} />
         <div className="two-column">
@@ -137,7 +137,7 @@ export function WorksheetEditor({ action, worksheetId, importId, standards, init
         </div>
         <label>차시 목표<textarea name="lessonObjective" value={lessonObjective} onChange={(event) => setLessonObjective(event.target.value)} maxLength={500} required /></label>
         <label>전체 페이지 수<input name="totalPages" type="number" min="1" max="30" defaultValue={initial?.totalPages ?? 1} required /><span className="muted">학생 촬영 화면에서 이 수만큼 페이지를 순서대로 제출합니다.</span></label>
-        <label>관련 성취기준 (여러 개 선택 가능)<select name="worksheetStandardIds" multiple value={selectedStandardIds} onChange={(event) => setSelectedStandardIds([...event.target.selectedOptions].map((option) => option.value))} required size={7}>{related.map((standard) => <option key={standard.id} value={standard.id}>[{standard.code}] {standard.description}</option>)}</select></label>
+        <div className="standards-field"><span className="field-label">관련 성취기준</span><div className="standards-list">{related.length ? related.map((standard) => <label className="standard-option" key={standard.id}><input name="worksheetStandardIds" type="checkbox" value={standard.id} checked={selectedStandardIds.includes(standard.id)} onChange={(event) => setSelectedStandardIds((current) => event.target.checked ? [...current, standard.id] : current.filter((id) => id !== standard.id))} /><span><strong>[{standard.code}]</strong> {standard.description}</span></label>) : <p className="muted">학년과 영역을 선택하면 관련 기준이 나타납니다.</p>}</div></div>
       </div>
 
       <div className="card form-grid">
@@ -154,7 +154,7 @@ export function WorksheetEditor({ action, worksheetId, importId, standards, init
             <div className="two-column"><label>정답<input name={`question-${index}-answer`} value={question.answer} onChange={(event) => { updateQuestion(index, "answer", event.target.value); markEdited(); }} required /></label><label>페이지<input name={`question-${index}-page`} type="number" min="1" max="100" value={question.page} onChange={(event) => { updateQuestion(index, "page", Number(event.target.value)); markEdited(); }} required /></label></div>
             <label>해설 (선택)<textarea name={`question-${index}-explanation`} value={question.explanation} onChange={(event) => { updateQuestion(index, "explanation", event.target.value); markEdited(); }} /></label>
             <label>문항 성취기준<select name={`question-${index}-standard`} value={question.achievementStandardId} onChange={(event) => { updateQuestion(index, "achievementStandardId", event.target.value); markEdited(); }} required>{standards.map((standard) => <option key={standard.id} value={standard.id}>[{standard.code}] {standard.description}</option>)}</select></label>
-            <label>답안 영역 좌표 (선택)<input name={`question-${index}-answer-bbox`} defaultValue={formatBBox(question.answerBBox)} placeholder="x, y, 너비, 높이 (예: 0.1, 0.5, 0.8, 0.2)" /><span className="muted">AI/템플릿 활동지는 0~1 비율 좌표를 입력하면 해당 영역만 인식합니다. 비어 있으면 전체 페이지를 보존합니다.</span></label>
+            <details className="advanced-options"><summary>답안을 읽을 위치 조정 · 선택 사항</summary><label>답안 위치<input name={`question-${index}-answer-bbox`} defaultValue={formatBBox(question.answerBBox)} placeholder="예: 0.1, 0.5, 0.8, 0.2" /><span className="muted">별도로 지정할 위치가 없다면 비워 두세요. 지정할 때는 왼쪽, 위쪽, 너비, 높이를 0~1 사이 숫자로 입력합니다.</span></label></details>
             {questions.length > 1 ? <button type="button" className="secondary" onClick={() => { setQuestions((current) => current.filter((_, questionIndex) => questionIndex !== index)); markEdited(); }}>이 문항 삭제</button> : null}
           </fieldset>
         ))}

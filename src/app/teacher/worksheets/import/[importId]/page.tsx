@@ -78,11 +78,11 @@ export default async function ImportWorksheetDetailPage({ params, searchParams }
 
   return (
     <section>
-      <p><Link href="/teacher/worksheets/import">← PDF 업로드</Link></p>
-      <div className="section-heading"><div><h1>PDF 분석 초안 확인</h1><p className="muted">{pdfImport.original_filename} · {pdfImport.page_count}페이지 · 분석 방식: 개발용 텍스트 추천</p></div>{signed?.signedUrl ? <a className="button-link secondary-link" href={signed.signedUrl}>원본 PDF 열기</a> : null}</div>
+      <p className="back-link"><Link href="/teacher/worksheets/import">← 파일 선택으로 돌아가기</Link></p>
+      <div className="section-heading page-title"><div><span className="eyebrow">CHECK BEFORE SAVING</span><h1>활동지 내용 확인</h1><p className="muted">{pdfImport.original_filename} · {pdfImport.page_count}페이지</p></div>{signed?.signedUrl ? <a className="button-link secondary-link" href={signed.signedUrl}>원본 PDF 열기</a> : null}</div>
       {error ? <p className="danger" role="alert">{error}</p> : null}
       {notice ? <p className="notice">{notice}</p> : null}
-      <div className="card"><p className="mock-notice">추천 결과는 자동 확정되지 않습니다. 모든 문항의 실제 내용, 문항 유형, 정답, 배점, 페이지, 성취기준을 확인한 뒤 등록하세요. 빈 정답은 등록할 수 없습니다.</p><details><summary>추출한 텍스트 미리보기</summary><pre className="pdf-text-preview">{pdfImport.extracted_text.slice(0, 4000) || "텍스트를 추출하지 못했습니다. PDF 원본을 보고 문항을 직접 입력하세요."}</pre></details></div>
+      <div className="card"><p className="mock-notice">아래 내용은 원본에서 읽은 정보를 바탕으로 제안한 것입니다. 문항과 정답을 확인하고 필요한 부분을 고쳐 주세요.</p><details><summary>읽어 온 내용 살펴보기</summary><pre className="pdf-text-preview">{pdfImport.extracted_text.slice(0, 4000) || "글자를 읽지 못했습니다. 원본을 보고 문항을 입력해 주세요."}</pre></details></div>
       <WorksheetEditor action={createWorksheetFromImport} importId={pdfImport.id} standards={standards} initial={initial} />
     </section>
   );

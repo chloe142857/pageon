@@ -22,9 +22,10 @@ export default async function ClassroomsPage({ searchParams }: { searchParams: S
 
   return (
     <section>
-      <h1>학급과 학생</h1>
+      <div className="section-heading page-title"><div><span className="eyebrow">CLASSROOM</span><h1>학급과 학생</h1><p className="muted">수업을 함께할 학급을 만들고 학생을 초대하세요.</p></div></div>
+      <div className="classroom-grid">
       <form action={createClassroom} className="card form-grid">
-        <h2>새 학급 만들기</h2>
+        <h2>새 학급 만들기</h2><p className="muted">학급을 만들면 학생 로그인에 사용할 학급 코드가 발급됩니다.</p>
         {error ? <p className="danger" role="alert">{error}</p> : null}
         <label>
           학급 이름
@@ -34,7 +35,7 @@ export default async function ClassroomsPage({ searchParams }: { searchParams: S
           학년도 (선택)
           <input name="schoolYear" placeholder="예: 2026" maxLength={20} />
         </label>
-        <button type="submit">학급 만들기</button>
+        <button type="submit">학급 만들기 <span aria-hidden>→</span></button>
       </form>
 
       <div className="card">
@@ -49,11 +50,12 @@ export default async function ClassroomsPage({ searchParams }: { searchParams: S
                   <br />
                   <span className="muted">{classroom.school_year || "학년도 미입력"} · 학급 코드 {classroom.join_code}</span>
                 </span>
-                <Link href={`/teacher/classrooms/${classroom.id}`}>열기</Link>
+                <Link href={`/teacher/classrooms/${classroom.id}`}>관리하기 <span aria-hidden>→</span></Link>
               </li>
             ))}
           </ul>
         ) : <p className="muted">아직 등록한 학급이 없습니다.</p>}
+      </div>
       </div>
     </section>
   );

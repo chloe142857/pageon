@@ -51,6 +51,17 @@ export async function createClassroom(formData: FormData) {
   }
 
   const admin = createSupabaseAdminClient();
+  const { data: duplicate } = await admin
+    .from("classrooms")
+    .select("id")
+    .eq("teacher_id", teacher.id)
+    .eq("name", parsed.data.name)
+    .eq("school_year", parsed.data.schoolYear ?? "")
+    .is("archived_at", null)
+    .maybeSingle();
+  if (duplicate) {
+    errorRedirect("/teacher/classrooms", "같은 학년도와 이름의 학급이 이미 있습니다.");
+  }
   const { error } = await admin.from("classrooms").insert({
     teacher_id: teacher.id,
     name: parsed.data.name,
@@ -78,7 +89,19 @@ export async function updateClassroom(formData: FormData) {
     errorRedirect(`/teacher/classrooms/${classroomId}`, parsed.success ? "잘못된 요청입니다." : parsed.error.issues[0].message);
   }
 
-  const { admin } = await requireOwnedClassroom(classroomId);
+  const { admin, teacher } = await requireOwnedClassroom(classroomId);
+  const { data: duplicate } = await admin
+    .from("classrooms")
+    .select("id")
+    .eq("teacher_id", teacher.id)
+    .eq("name", parsed.data.name)
+    .eq("school_year", parsed.data.schoolYear ?? "")
+    .is("archived_at", null)
+    .neq("id", classroomId)
+    .maybeSingle();
+  if (duplicate) {
+    errorRedirect(`/teacher/classrooms/${classroomId}`, "같은 학년도와 이름의 학급이 이미 있습니다.");
+  }
   const { error } = await admin
     .from("classrooms")
     .update({ name: parsed.data.name, school_year: parsed.data.schoolYear ?? "", join_code: parsed.data.joinCode })

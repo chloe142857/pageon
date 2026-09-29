@@ -18,7 +18,7 @@ export default async function WorksheetDetailPage({ params, searchParams }: Page
   const admin = createSupabaseAdminClient();
   const { data: worksheet } = await admin
     .from("worksheets")
-    .select("id, title, grade_band, semester, area, unit_name, lesson_objective, total_pages, generation_source, status, version_number, worksheet_token")
+    .select("id, title, grade_band, semester, area, unit_name, lesson_objective, total_pages, generation_source, structured_content, status, version_number, worksheet_token")
     .eq("id", worksheetId)
     .eq("teacher_id", teacher.id)
     .maybeSingle();
@@ -32,8 +32,13 @@ export default async function WorksheetDetailPage({ params, searchParams }: Page
     admin.from("worksheet_imports").select("id, original_filename").eq("worksheet_id", worksheetId).maybeSingle(),
   ]);
 
+  const content = worksheet.structured_content && typeof worksheet.structured_content === "object" ? worksheet.structured_content as Record<string, unknown> : {};
+  const contentWorksheet = content.worksheet && typeof content.worksheet === "object" ? content.worksheet as Record<string, unknown> : {};
+  const contentQuestions = Array.isArray(content.questions) ? content.questions as Array<Record<string, unknown>> : [];
+  const aiGenerated = content.generation && typeof content.generation === "object" && (content.generation as Record<string, unknown>).provider === "upstage";
   const initial = {
     title: worksheet.title,
+    curriculumGrade: typeof contentWorksheet.curriculum_grade === "number" ? contentWorksheet.curriculum_grade : undefined,
     gradeBand: worksheet.grade_band,
     semester: worksheet.semester,
     area: worksheet.area,
@@ -41,14 +46,14 @@ export default async function WorksheetDetailPage({ params, searchParams }: Page
     lessonObjective: worksheet.lesson_objective,
     totalPages: worksheet.total_pages,
     worksheetStandardIds: worksheetStandards?.map((item) => item.achievement_standard_id) ?? [],
-    questions: (questions ?? []).map((question) => ({ type: question.type, questionText: question.question_text, answer: question.answer, explanation: question.explanation, score: Number(question.score), achievementStandardId: question.achievement_standard_id, page: question.page, answerBBox: question.answer_bbox as { x: number; y: number; width: number; height: number } | null })),
+    questions: (questions ?? []).map((question, index) => ({ type: question.type, category: contentQuestions[index]?.category === "word_problem" ? "word_problem" as const : question.type, questionText: question.question_text, answer: question.answer, explanation: question.explanation, score: Number(question.score), achievementStandardId: question.achievement_standard_id, page: question.page, answerBBox: question.answer_bbox as { x: number; y: number; width: number; height: number } | null })),
     generationSource: worksheet.generation_source as "manual" | "mock" | "pdf_import",
   };
 
   return (
     <section>
       <p><Link href="/teacher/worksheets">← 활동지 목록</Link></p>
-      <div className="section-heading"><div><h1>{worksheet.title}</h1><p className="muted">{worksheet.status === "published" ? `발행 v${worksheet.version_number}` : "초안"}</p></div>{worksheet.status === "published" ? <Link className="button-link" href={`/teacher/worksheets/${worksheet.id}/print`}>인쇄용 PDF</Link> : null}</div>
+      <div className="section-heading"><div><h1>{worksheet.title}</h1><p className="muted">{worksheet.status === "published" ? `발행 v${worksheet.version_number}` : "초안"}{aiGenerated ? " · Upstage AI 생성" : ""}</p></div><Link className="button-link" href={`/teacher/worksheets/${worksheet.id}/print`}>{worksheet.status === "published" ? "인쇄용 PDF" : "인쇄 미리보기"}</Link></div>
       {error ? <p className="danger" role="alert">{error}</p> : null}
       {notice ? <p className="notice">{notice}</p> : null}
       {worksheet.status === "draft" ? <form action={publishWorksheet} className="card"><input type="hidden" name="worksheetId" value={worksheet.id} /><p>발행하면 학생 개인정보가 없는 전용 QR과 인쇄용 PDF를 사용할 수 있습니다.</p><button type="submit">활동지 발행</button></form> : <div className="card"><p>QR 토큰은 발행된 활동지 전용입니다. 수정 후에는 초안으로 전환되며 다시 발행해야 합니다.</p><code>/submit/{worksheet.worksheet_token}</code></div>}

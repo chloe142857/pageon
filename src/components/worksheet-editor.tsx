@@ -2,8 +2,8 @@
 
 import { useMemo, useState } from "react";
 
-import { gradeBandFor, initialGradeForBand, lessonsFor } from "@/lib/lesson-contents";
-import { questionTypes, type GenerationSource, type QuestionType, type WorksheetQuestionInput } from "@/lib/worksheet";
+import { gradeBandFor, initialGradeForBand, lessonsFor, mathAreas, relatedStandards, suggestedArea } from "@/lib/lesson-contents";
+import { questionTypes, type GenerationSource, type QuestionCategory, type QuestionType, type WorksheetQuestionInput } from "@/lib/worksheet";
 
 type Standard = { id: string; code: string; description: string; grade_band: string; area: string };
 type QuestionDraft = WorksheetQuestionInput;
@@ -15,6 +15,7 @@ type Props = {
   standards: Standard[];
   initial?: {
     title: string;
+    curriculumGrade?: number;
     gradeBand: string;
     semester: string;
     area: string;
@@ -27,11 +28,12 @@ type Props = {
   };
 };
 
-const labels: Record<QuestionType, string> = {
+const labels: Record<QuestionCategory, string> = {
   multiple_choice: "객관식",
   short_answer: "단답형",
-  calculation: "계산형",
+  calculation: "단순 연산",
   constructed_response: "서술형",
+  word_problem: "문장제 문제",
 };
 
 function blankQuestion(standardId: string): QuestionDraft {
@@ -44,17 +46,25 @@ function formatBBox(value: QuestionDraft["answerBBox"]) {
 
 export function WorksheetEditor({ action, worksheetId, importId, standards, initial }: Props) {
   const defaultStandardId = standards[0]?.id ?? "";
+  const initialGrade = initial?.curriculumGrade ?? initialGradeForBand(initial?.gradeBand || "3~4학년");
+  const initialUnits = lessonsFor(initialGrade, initial?.semester || "1학기");
+  const initialUnit = initialUnits.find((item) => item.unit_name === initial?.unitName);
+  const initialLesson = initialUnit?.lessons.find((item) => item.content === initial?.lessonObjective);
   const [questions, setQuestions] = useState<QuestionDraft[]>(initial?.questions?.length ? initial.questions : [blankQuestion(defaultStandardId)]);
   const [generationSource, setGenerationSource] = useState<GenerationSource>(initial?.generationSource ?? "manual");
   const [gradeBand, setGradeBand] = useState(initial?.gradeBand || "3~4학년");
-  const [curriculumGrade, setCurriculumGrade] = useState(() => initialGradeForBand(initial?.gradeBand || "3~4학년"));
+  const [curriculumGrade, setCurriculumGrade] = useState(initialGrade);
   const [semester, setSemester] = useState(initial?.semester || "1학기");
-  const [selectedUnitNumber, setSelectedUnitNumber] = useState("");
-  const [selectedLessonNumber, setSelectedLessonNumber] = useState("");
+  const [selectedUnitNumber, setSelectedUnitNumber] = useState(initialUnit ? String(initialUnit.unit_number) : "");
+  const [selectedLessonNumber, setSelectedLessonNumber] = useState(initialLesson ? String(initialLesson.lesson_number) : "");
   const [unitName, setUnitName] = useState(initial?.unitName || "");
   const [lessonObjective, setLessonObjective] = useState(initial?.lessonObjective || "");
+  const [area, setArea] = useState(initial?.area || "");
+  const [selectedStandardIds, setSelectedStandardIds] = useState(initial?.worksheetStandardIds ?? (defaultStandardId ? [defaultStandardId] : []));
   const curriculumUnits = useMemo(() => lessonsFor(curriculumGrade, semester), [curriculumGrade, semester]);
   const selectedUnit = curriculumUnits.find((unit) => unit.unit_number === Number(selectedUnitNumber));
+  const selectedLesson = selectedUnit?.lessons.find((item) => item.lesson_number === Number(selectedLessonNumber));
+  const related = useMemo(() => relatedStandards(standards, curriculumGrade, area, unitName, lessonObjective), [standards, curriculumGrade, area, unitName, lessonObjective]);
   const isMock = generationSource === "mock";
   const isPdfImport = generationSource === "pdf_import";
   const markEdited = () => setGenerationSource((current) => current === "mock" ? "manual" : current);
@@ -63,41 +73,45 @@ export function WorksheetEditor({ action, worksheetId, importId, standards, init
     setQuestions((current) => current.map((question, questionIndex) => questionIndex === index ? { ...question, [field]: value } : question));
   }
 
-  function fillMockQuestions() {
-    const standardId = questions[0]?.achievementStandardId || defaultStandardId;
-    setQuestions([
-      { type: "multiple_choice", questionText: "12 ÷ 3의 답을 고르세요.\n① 3  ② 4  ③ 5  ④ 6", answer: "② 4", explanation: "12를 3개씩 똑같이 나누면 4입니다.", score: 1, achievementStandardId: standardId, page: 1, answerBBox: null },
-      { type: "short_answer", questionText: "사탕 15개를 5명에게 똑같이 나누어 주면 한 명이 받는 사탕은 몇 개인가요?", answer: "3개", explanation: "15 ÷ 5 = 3", score: 2, achievementStandardId: standardId, page: 1, answerBBox: null },
-      { type: "calculation", questionText: "48 ÷ 6을 계산하세요.", answer: "8", explanation: "6 × 8 = 48", score: 2, achievementStandardId: standardId, page: 1, answerBBox: null },
-      { type: "constructed_response", questionText: "18 ÷ 3의 계산 방법을 그림, 식 또는 말로 설명하세요.", answer: "18을 3개씩 묶으면 6묶음이므로 18 ÷ 3 = 6", explanation: "3개씩 묶는 나눗셈의 의미를 설명합니다.", score: 3, achievementStandardId: standardId, page: 1, answerBBox: null },
-    ]);
-    setGenerationSource("mock");
-  }
-
   function selectCurriculumGrade(grade: number) {
     setCurriculumGrade(grade);
     setGradeBand(gradeBandFor(grade));
     setSelectedUnitNumber("");
     setSelectedLessonNumber("");
+    setArea("");
+    setSelectedStandardIds([]);
   }
 
   function selectSemester(value: string) {
     setSemester(value);
     setSelectedUnitNumber("");
     setSelectedLessonNumber("");
+    setArea("");
+    setSelectedStandardIds([]);
   }
 
   function selectUnit(value: string) {
     setSelectedUnitNumber(value);
     setSelectedLessonNumber("");
     const unit = curriculumUnits.find((item) => item.unit_number === Number(value));
-    if (unit) setUnitName(unit.unit_name);
+    if (unit) {
+      setUnitName(unit.unit_name);
+      setArea(suggestedArea(unit.unit_name));
+      setSelectedStandardIds([]);
+    }
   }
 
   function selectLesson(value: string) {
     setSelectedLessonNumber(value);
     const lesson = selectedUnit?.lessons.find((item) => item.lesson_number === Number(value));
-    if (lesson) setLessonObjective(lesson.content);
+    if (lesson && selectedUnit) {
+      setLessonObjective(lesson.content);
+      const nextArea = suggestedArea(selectedUnit.unit_name, lesson.content);
+      setArea(nextArea);
+      const best = relatedStandards(standards, curriculumGrade, nextArea, selectedUnit.unit_name, lesson.content)[0];
+      setSelectedStandardIds(best ? [best.id] : []);
+      if (best) setQuestions((current) => current.map((question) => ({ ...question, achievementStandardId: best.id })));
+    }
   }
 
   return (
@@ -106,25 +120,24 @@ export function WorksheetEditor({ action, worksheetId, importId, standards, init
       {importId ? <input type="hidden" name="importId" value={importId} /> : null}
       <input type="hidden" name="generationSource" value={generationSource} />
       <div className="card form-grid">
-        <div className="section-heading">
-          <div><h2>활동지 기본 정보</h2><p className="muted">성취기준과 차시 목표를 먼저 정합니다.</p></div>
-          <button type="button" className="secondary" onClick={fillMockQuestions}>개발용 목 문항 채우기</button>
-        </div>
+        <div className="section-heading"><div><h2>활동지 기본 정보</h2><p className="muted">성취기준과 차시 목표를 먼저 정합니다.</p></div></div>
         {isMock ? <p className="mock-notice">현재 문항은 AI 결과가 아닌 개발용 목 데이터입니다. 저장 전 교사가 내용을 수정하세요.</p> : null}
         {isPdfImport ? <p className="mock-notice">기존 PDF에서 추천한 초안입니다. PDF 원본의 문항, 정답, 성취기준과 페이지를 교사가 확인·수정해야 합니다.</p> : null}
         <label>활동지 제목<input name="title" defaultValue={initial?.title} maxLength={120} required /></label>
+        <input type="hidden" name="gradeBand" value={gradeBand} />
         <div className="two-column">
-          <label>학년군<select name="gradeBand" value={gradeBand} onChange={(event) => setGradeBand(event.target.value)}><option value="1~2학년">1~2학년</option><option value="3~4학년">3~4학년</option><option value="5~6학년">5~6학년</option></select></label>
+          <label>학년<select name="curriculumGrade" value={curriculumGrade} onChange={(event) => selectCurriculumGrade(Number(event.target.value))}>{[1, 2, 3, 4, 5, 6].map((grade) => <option key={grade} value={grade}>{grade}학년</option>)}</select></label>
           <label>학기<select name="semester" value={semester} onChange={(event) => selectSemester(event.target.value)}><option>1학기</option><option>2학기</option></select></label>
         </div>
-        <fieldset className="curriculum-picker"><legend>진도표에서 차시 불러오기</legend><p className="muted">`lesson_contents.json`의 단원·차시를 선택하면 아래 단원과 차시 목표가 채워집니다. 저장 전에는 자유롭게 수정할 수 있습니다.</p><div className="three-column"><label>학년<select value={curriculumGrade} onChange={(event) => selectCurriculumGrade(Number(event.target.value))}>{[1, 2, 3, 4, 5, 6].map((grade) => <option key={grade} value={grade}>{grade}학년</option>)}</select></label><label>단원<select value={selectedUnitNumber} onChange={(event) => selectUnit(event.target.value)}><option value="">단원 선택</option>{curriculumUnits.map((unit) => <option key={unit.unit_number} value={unit.unit_number}>{unit.unit_number}. {unit.unit_name}</option>)}</select></label><label>차시<select value={selectedLessonNumber} onChange={(event) => selectLesson(event.target.value)} disabled={!selectedUnit}><option value="">차시 선택</option>{selectedUnit?.lessons.map((lesson) => <option key={lesson.lesson_number} value={lesson.lesson_number}>{lesson.lesson_number}차시 · {lesson.content}</option>)}</select></label></div></fieldset>
+        <div className="two-column"><label>단원<select value={selectedUnitNumber} onChange={(event) => selectUnit(event.target.value)}><option value="">단원 선택</option>{curriculumUnits.map((unit) => <option key={unit.unit_number} value={unit.unit_number}>{unit.unit_number}. {unit.unit_name}</option>)}</select></label><label>차시<select value={selectedLessonNumber} onChange={(event) => selectLesson(event.target.value)} disabled={!selectedUnit}><option value="">차시 선택</option>{selectedUnit?.lessons.map((lesson) => <option key={lesson.lesson_number} value={lesson.lesson_number}>{lesson.lesson_number}차시 · {lesson.content}</option>)}</select></label></div>
+        {selectedLesson ? <p className="muted">선택한 차시: {selectedLesson.content}</p> : null}
         <div className="two-column">
-          <label>영역<input name="area" defaultValue={initial?.area} placeholder="예: 수와 연산" maxLength={60} /></label>
+          <label>영역<select name="area" value={area} onChange={(event) => { const nextArea = event.target.value; setArea(nextArea); const best = relatedStandards(standards, curriculumGrade, nextArea, unitName, lessonObjective)[0]; setSelectedStandardIds(best ? [best.id] : []); if (best) setQuestions((current) => current.map((question) => ({ ...question, achievementStandardId: best.id }))); }}><option value="">영역 선택</option>{mathAreas.map((value) => <option key={value}>{value}</option>)}</select></label>
           <label>단원<input name="unitName" value={unitName} onChange={(event) => setUnitName(event.target.value)} placeholder="예: 나눗셈" maxLength={120} /></label>
         </div>
         <label>차시 목표<textarea name="lessonObjective" value={lessonObjective} onChange={(event) => setLessonObjective(event.target.value)} maxLength={500} required /></label>
         <label>전체 페이지 수<input name="totalPages" type="number" min="1" max="30" defaultValue={initial?.totalPages ?? 1} required /><span className="muted">학생 촬영 화면에서 이 수만큼 페이지를 순서대로 제출합니다.</span></label>
-        <label>활동지 성취기준 (여러 개 선택 가능)<select name="worksheetStandardIds" multiple defaultValue={initial?.worksheetStandardIds ?? (defaultStandardId ? [defaultStandardId] : [])} required size={7}>{standards.map((standard) => <option key={standard.id} value={standard.id}>[{standard.code}] {standard.description}</option>)}</select></label>
+        <label>관련 성취기준 (여러 개 선택 가능)<select name="worksheetStandardIds" multiple value={selectedStandardIds} onChange={(event) => setSelectedStandardIds([...event.target.selectedOptions].map((option) => option.value))} required size={7}>{related.map((standard) => <option key={standard.id} value={standard.id}>[{standard.code}] {standard.description}</option>)}</select></label>
       </div>
 
       <div className="card form-grid">
@@ -134,7 +147,7 @@ export function WorksheetEditor({ action, worksheetId, importId, standards, init
           <fieldset className="question-card" key={index}>
             <legend>{index + 1}번 문항</legend>
             <div className="two-column">
-              <label>유형<select name={`question-${index}-type`} value={question.type} onChange={(event) => { updateQuestion(index, "type", event.target.value as QuestionType); markEdited(); }}>{questionTypes.map((type) => <option key={type} value={type}>{labels[type]}</option>)}</select></label>
+              <label>유형<select name={`question-${index}-category`} value={question.category ?? question.type} onChange={(event) => { const category = event.target.value as QuestionCategory; setQuestions((current) => current.map((item, questionIndex) => questionIndex === index ? { ...item, category, type: category === "word_problem" ? "short_answer" : category as QuestionType } : item)); markEdited(); }}>{[...questionTypes, "word_problem" as const].map((type) => <option key={type} value={type}>{labels[type]}</option>)}</select><input type="hidden" name={`question-${index}-type`} value={question.type} /></label>
               <label>배점<input name={`question-${index}-score`} type="number" min="0" max="100" step="0.5" value={question.score} onChange={(event) => { updateQuestion(index, "score", Number(event.target.value)); markEdited(); }} required /></label>
             </div>
             <label>문항 내용<textarea name={`question-${index}-text`} value={question.questionText} onChange={(event) => { updateQuestion(index, "questionText", event.target.value); markEdited(); }} required /></label>

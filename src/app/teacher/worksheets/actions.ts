@@ -7,6 +7,8 @@ import { redirect } from "next/navigation";
 import { requireTeacher } from "@/lib/auth/teacher";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 import { analyzeWorksheetText, extractPdfPages } from "@/lib/pdf-import";
+import { gradeBandFor, lessonsFor, mathAreas } from "@/lib/lesson-contents";
+import { generateWorksheetQuestions, generationCategories, generationTotals, type GenerationCategory } from "@/lib/worksheet-generation";
 import { buildStructuredContent, parseWorksheetFormData, type GenerationSource, type WorksheetInput } from "@/lib/worksheet";
 
 function errorRedirect(path: string, message: string): never {
@@ -37,6 +39,7 @@ async function replaceWorksheetContent(
   input: WorksheetInput,
   generationSource: GenerationSource,
   versionNumber: number,
+  generationMetadata?: { provider: string; models: string[] },
 ) {
   const standardIds = [...new Set(input.worksheetStandardIds)];
   const { data: standards, error: standardsError } = await admin
@@ -75,15 +78,16 @@ async function replaceWorksheetContent(
       question_bbox: null,
       answer_bbox: question.answerBBox,
     })))
-    .select("id, type, question_text, answer, explanation, score, achievement_standard_id, page, answer_bbox");
+    .select("id, question_number, type, question_text, answer, explanation, score, achievement_standard_id, page, answer_bbox");
 
   if (questionError || !questions) throw new Error("문항을 저장하지 못했습니다.");
 
   const structuredContent = buildStructuredContent(
     { ...input, id: worksheetId, versionNumber, generationSource },
-    questions.map((question) => ({
+    questions.sort((a, b) => a.question_number - b.question_number).map((question) => ({
       id: question.id,
       type: question.type,
+      category: input.questions[question.question_number - 1]?.category,
       questionText: question.question_text,
       answer: question.answer,
       explanation: question.explanation,
@@ -94,6 +98,7 @@ async function replaceWorksheetContent(
       answerBBox: question.answer_bbox as { x: number; y: number; width: number; height: number } | null,
     })),
   );
+  if (generationMetadata) Object.assign(structuredContent, { generation: generationMetadata });
 
   const { error: worksheetError } = await admin
     .from("worksheets")
@@ -289,6 +294,66 @@ export async function createWorksheet(formData: FormData) {
   redirect(`/teacher/worksheets/${worksheet.id}?notice=${encodeURIComponent("활동지 초안을 저장했습니다.")}`);
 }
 
+export async function generateWorksheet(_previous: { error: string }, formData: FormData): Promise<{ error: string }> {
+  const teacher = await requireTeacher();
+  const grade = Number(formData.get("grade"));
+  const semester = String(formData.get("semester") ?? "");
+  const unitNumber = Number(formData.get("unitNumber"));
+  const lessonNumber = Number(formData.get("lessonNumber"));
+  const area = String(formData.get("area") ?? "");
+  const title = String(formData.get("title") ?? "").trim();
+  const total = Number(formData.get("total"));
+  const counts = Object.fromEntries(generationCategories.map((category) => [category, Number(formData.get(category))])) as Record<GenerationCategory, number>;
+  const standardIds = [...new Set(formData.getAll("standardIds").map(String))];
+  const unit = lessonsFor(grade, semester).find((item) => item.unit_number === unitNumber);
+  const lesson = unit?.lessons.find((item) => item.lesson_number === lessonNumber);
+
+  if (!Number.isInteger(grade) || grade < 1 || grade > 6 || !["1학기", "2학기"].includes(semester) || !unit || !lesson) {
+    return { error: "학년·학기·단원·차시를 모두 선택하세요." };
+  }
+  if (!mathAreas.includes(area as (typeof mathAreas)[number])) return { error: "영역을 확인하세요." };
+  if (!title || title.length > 120) return { error: "활동지 제목을 1~120자로 입력하세요." };
+  if (!generationTotals.includes(total as (typeof generationTotals)[number]) || generationCategories.some((category) => !Number.isInteger(counts[category]) || counts[category] < 0 || counts[category] > total) || generationCategories.reduce((sum, category) => sum + counts[category], 0) !== total) {
+    return { error: "유형별 문항 수 합계를 선택한 전체 문항 수와 같게 맞추세요." };
+  }
+  if (!standardIds.length) return { error: "성취기준을 하나 이상 선택하세요." };
+
+  const admin = createSupabaseAdminClient();
+  const { data: standards, error: standardsError } = await admin.from("achievement_standards")
+    .select("id, code, description, grade_band, area").in("id", standardIds);
+  if (standardsError || !standards || standards.length !== standardIds.length || standards.some((item) => item.grade_band !== gradeBandFor(grade) || item.area !== area)) {
+    return { error: "선택한 학년·영역에 맞는 성취기준을 다시 선택하세요." };
+  }
+
+  let generated: Awaited<ReturnType<typeof generateWorksheetQuestions>>;
+  try {
+    generated = await generateWorksheetQuestions({ grade, semester, unitName: unit.unit_name, lessonObjective: lesson.content, area, total, counts, standards });
+  } catch (error) {
+    return { error: error instanceof Error ? `문항 생성 실패: ${error.message}` : "문항 생성에 실패했습니다." };
+  }
+
+  const input: WorksheetInput = {
+    title, curriculumGrade: grade, gradeBand: gradeBandFor(grade), semester, area, unitName: unit.unit_name,
+    lessonObjective: lesson.content, totalPages: Math.max(...generated.questions.map((question) => question.page)),
+    worksheetStandardIds: standardIds, questions: generated.questions,
+  };
+  const { data: worksheet, error: createError } = await admin.from("worksheets").insert({
+    teacher_id: teacher.id, title: input.title, grade_band: input.gradeBand, semester: input.semester,
+    area: input.area, unit_name: input.unitName, lesson_objective: input.lessonObjective,
+    total_pages: input.totalPages, generation_source: "manual", worksheet_token: createWorksheetToken(),
+  }).select("id").single();
+  if (createError || !worksheet) return { error: createError?.message ?? "활동지 초안을 저장하지 못했습니다." };
+
+  try {
+    await replaceWorksheetContent(admin, worksheet.id, input, "manual", 0, { provider: "upstage", models: generated.modelsUsed });
+  } catch (error) {
+    await admin.from("worksheets").delete().eq("id", worksheet.id);
+    return { error: error instanceof Error ? error.message : "문항을 저장하지 못했습니다." };
+  }
+  revalidatePath("/teacher/worksheets");
+  redirect(`/teacher/worksheets/${worksheet.id}?notice=${encodeURIComponent("AI가 활동지 초안을 생성했습니다. 문항·정답을 확인하고 수정한 뒤 발행하세요.")}`);
+}
+
 export async function saveWorksheet(formData: FormData) {
   const worksheetId = String(formData.get("worksheetId") ?? "");
   if (!worksheetId) errorRedirect("/teacher/worksheets", "잘못된 요청입니다.");
@@ -303,7 +368,10 @@ export async function saveWorksheet(formData: FormData) {
   }
 
   try {
-    await replaceWorksheetContent(admin, worksheetId, input, generationSource, worksheet.version_number);
+    const previousContent = worksheet.structured_content && typeof worksheet.structured_content === "object" ? worksheet.structured_content as Record<string, unknown> : {};
+    const generation = previousContent.generation as { provider?: string; models?: string[] } | undefined;
+    const metadata = generation?.provider === "upstage" && Array.isArray(generation.models) ? { provider: "upstage", models: generation.models } : undefined;
+    await replaceWorksheetContent(admin, worksheetId, input, generationSource, worksheet.version_number, metadata);
     if (worksheet.status === "published") {
       const { error } = await admin.from("worksheets").update({ status: "draft", published_at: null }).eq("id", worksheetId);
       if (error) throw error;

@@ -9,11 +9,13 @@ export const questionTypes = [
 
 export type QuestionType = (typeof questionTypes)[number];
 export type GenerationSource = "manual" | "mock" | "pdf_import";
+export type QuestionCategory = QuestionType | "word_problem";
 
 export type NormalizedBox = { x: number; y: number; width: number; height: number };
 
 export type WorksheetQuestionInput = {
   type: QuestionType;
+  category?: QuestionCategory;
   questionText: string;
   answer: string;
   explanation: string;
@@ -25,6 +27,7 @@ export type WorksheetQuestionInput = {
 
 export type WorksheetInput = {
   title: string;
+  curriculumGrade?: number;
   gradeBand: string;
   semester: string;
   area: string;
@@ -37,6 +40,7 @@ export type WorksheetInput = {
 
 const worksheetSchema = z.object({
   title: z.string().trim().min(1, "활동지 제목을 입력하세요.").max(120),
+  curriculumGrade: z.coerce.number().int().min(1).max(6).optional(),
   gradeBand: z.string().trim().min(1, "학년군을 선택하세요.").max(30),
   semester: z.string().trim().min(1, "학기를 선택하세요.").max(30),
   area: z.string().trim().max(60),
@@ -46,6 +50,7 @@ const worksheetSchema = z.object({
   worksheetStandardIds: z.array(z.string().uuid()).min(1, "성취기준을 하나 이상 선택하세요."),
   questions: z.array(z.object({
     type: z.enum(questionTypes),
+    category: z.enum([...questionTypes, "word_problem"]).optional(),
     questionText: z.string().trim().min(1, "문항 내용을 입력하세요.").max(4000),
     answer: z.string().trim().min(1, "정답을 입력하세요.").max(2000),
     explanation: z.string().trim().max(4000),
@@ -65,6 +70,7 @@ export function parseWorksheetFormData(formData: FormData): WorksheetInput {
   const questionCount = Number(formData.get("questionCount"));
   const questions = Array.from({ length: Number.isInteger(questionCount) && questionCount > 0 ? questionCount : 0 }, (_, index) => ({
     type: formData.get(`question-${index}-type`),
+    category: formData.get(`question-${index}-category`) || undefined,
     questionText: formData.get(`question-${index}-text`),
     answer: formData.get(`question-${index}-answer`),
     explanation: formData.get(`question-${index}-explanation`) || "",
@@ -76,6 +82,7 @@ export function parseWorksheetFormData(formData: FormData): WorksheetInput {
 
   const parsed = worksheetSchema.safeParse({
     title: formData.get("title"),
+    curriculumGrade: formData.get("curriculumGrade") || undefined,
     gradeBand: formData.get("gradeBand"),
     semester: formData.get("semester"),
     area: formData.get("area") || "",
@@ -124,6 +131,7 @@ export function buildStructuredContent(
     worksheet: {
       worksheet_id: worksheet.id,
       title: worksheet.title,
+      curriculum_grade: worksheet.curriculumGrade ?? null,
       grade_band: worksheet.gradeBand,
       semester: worksheet.semester,
       area: worksheet.area,
@@ -136,6 +144,7 @@ export function buildStructuredContent(
       question_id: question.id,
       number: index + 1,
       type: question.type,
+      category: question.category ?? question.type,
       question_text: question.questionText,
       answer: question.answer,
       explanation: question.explanation,

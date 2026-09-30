@@ -4,7 +4,7 @@ import { createSupabaseAdminClient } from "./supabase/server";
 export type AnalyticsFilters = {
   classroomId?: string;
   studentId?: string;
-  gradeBand?: string;
+  grade?: string;
   semester?: string;
   area?: string;
   unitName?: string;
@@ -20,7 +20,7 @@ function value(raw: string | string[] | undefined) {
 
 export function parseAnalyticsFilters(searchParams: Record<string, string | string[] | undefined>): AnalyticsFilters {
   return {
-    classroomId: value(searchParams.classroomId), studentId: value(searchParams.studentId), gradeBand: value(searchParams.gradeBand),
+    classroomId: value(searchParams.classroomId), studentId: value(searchParams.studentId), grade: value(searchParams.grade),
     semester: value(searchParams.semester), area: value(searchParams.area), unitName: value(searchParams.unitName),
     standardId: value(searchParams.standardId), worksheetId: value(searchParams.worksheetId), from: value(searchParams.from), to: value(searchParams.to),
   };
@@ -45,20 +45,25 @@ export async function loadTeacherAnalytics(teacherId: string, filters: Analytics
   ]);
   const students = (allStudents ?? []).filter((student) => (!filters.classroomId || student.classroom_id === filters.classroomId) && (!filters.studentId || student.id === filters.studentId))
     .map((student): AnalyticsStudent => ({ id: student.id, classroomId: student.classroom_id, displayName: student.display_name, studentNumber: student.student_number, active: student.active }));
-  let worksheetQuery = admin.from("worksheets").select("id, title, grade_band, semester, area, unit_name").eq("teacher_id", teacherId).order("updated_at", { ascending: false });
-  if (filters.gradeBand) worksheetQuery = worksheetQuery.eq("grade_band", filters.gradeBand);
+  let worksheetQuery = admin.from("worksheets").select("id, title, grade_band, semester, area, unit_name, structured_content").eq("teacher_id", teacherId).order("updated_at", { ascending: false });
   if (filters.semester) worksheetQuery = worksheetQuery.eq("semester", filters.semester);
   if (filters.area) worksheetQuery = worksheetQuery.eq("area", filters.area);
   if (filters.unitName) worksheetQuery = worksheetQuery.eq("unit_name", filters.unitName);
   if (filters.worksheetId) worksheetQuery = worksheetQuery.eq("id", filters.worksheetId);
   const { data: worksheetRows } = await worksheetQuery;
-  const worksheetIds = (worksheetRows ?? []).map((worksheet) => worksheet.id);
+  const gradeFor = (worksheet: { grade_band: string; structured_content: unknown }) => {
+    const content = worksheet.structured_content && typeof worksheet.structured_content === "object" ? worksheet.structured_content as Record<string, unknown> : {};
+    const worksheetContent = content.worksheet && typeof content.worksheet === "object" ? content.worksheet as Record<string, unknown> : {};
+    return typeof worksheetContent.curriculum_grade === "number" ? worksheetContent.curriculum_grade : undefined;
+  };
+  const filteredWorksheetRows = (worksheetRows ?? []).filter((worksheet) => !filters.grade || gradeFor(worksheet) === Number(filters.grade));
+  const worksheetIds = filteredWorksheetRows.map((worksheet) => worksheet.id);
   const { data: worksheetStandardRows } = worksheetIds.length
     ? await admin.from("worksheet_standards").select("worksheet_id, achievement_standard_id").in("worksheet_id", worksheetIds)
     : { data: [] };
-  const worksheets = (worksheetRows ?? []).map((worksheet): AnalyticsWorksheet => ({
+  const worksheets = filteredWorksheetRows.map((worksheet): AnalyticsWorksheet => ({
     id: worksheet.id, title: worksheet.title, gradeBand: worksheet.grade_band, semester: worksheet.semester,
-    area: worksheet.area, unitName: worksheet.unit_name,
+    grade: gradeFor(worksheet), area: worksheet.area, unitName: worksheet.unit_name,
     standardIds: (worksheetStandardRows ?? []).filter((row) => row.worksheet_id === worksheet.id).map((row) => row.achievement_standard_id),
   }));
   const matchingWorksheetIds = new Set(worksheets.filter((worksheet) => !filters.standardId || worksheet.standardIds.includes(filters.standardId)).map((worksheet) => worksheet.id));

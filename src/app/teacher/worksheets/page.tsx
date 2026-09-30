@@ -14,12 +14,15 @@ export default async function WorksheetsPage({ searchParams }: { searchParams: P
   const admin = createSupabaseAdminClient();
   const { data: worksheets, error } = await admin
     .from("worksheets")
-    .select("id, title, grade_band, semester, area, unit_name, status, version_number, updated_at")
+    .select("id, title, grade_band, semester, area, unit_name, status, version_number, updated_at, structured_content")
     .eq("teacher_id", teacher.id)
     .order("updated_at", { ascending: false });
   const folders = new Map<string, NonNullable<typeof worksheets>>();
   worksheets?.forEach((worksheet) => {
-    const label = [worksheet.grade_band, worksheet.semester, worksheet.unit_name || "단원 미분류"].filter(Boolean).join(" · ");
+    const content = worksheet.structured_content && typeof worksheet.structured_content === "object" ? worksheet.structured_content as Record<string, unknown> : {};
+    const worksheetContent = content.worksheet && typeof content.worksheet === "object" ? content.worksheet as Record<string, unknown> : {};
+    const gradeLabel = typeof worksheetContent.curriculum_grade === "number" ? `${worksheetContent.curriculum_grade}학년` : worksheet.grade_band;
+    const label = [gradeLabel, worksheet.semester, worksheet.unit_name || "단원 미분류"].filter(Boolean).join(" · ");
     folders.set(label, [...(folders.get(label) ?? []), worksheet]);
   });
 

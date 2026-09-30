@@ -41,15 +41,6 @@ test("일반 문항은 10문항씩 A4 한 쪽에 배치한다", () => {
   assert.deepEqual(result.map((item) => item.page), [...Array(10).fill(1), 2]);
 });
 
-test("풀이가 필요한 문항은 인쇄 여백을 고려해 다음 쪽으로 넘긴다", () => {
-  const base = { questionText: "문항", answer: "정답", explanation: "해설", score: 1, page: 1, answerBBox: null };
-  const result = paginateGeneratedQuestions([
-    ...Array.from({ length: 8 }, () => ({ ...base, type: "short_answer" as const })),
-    { ...base, type: "constructed_response" as const },
-  ]);
-  assert.deepEqual(result.map((item) => item.page), [...Array(8).fill(1), 2]);
-});
-
 test("Upstage는 선택한 유형 개수와 성취기준으로 문제를 생성한다", async () => {
   const originalFetch = globalThis.fetch;
   const originalKey = process.env.UPSTAGE_API_KEY;
@@ -76,7 +67,7 @@ test("Upstage는 선택한 유형 개수와 성취기준으로 문제를 생성�
   }
 });
 
-test("10·15·20·30문항 설정은 요청한 수만큼 생성하고 A4 페이지로 나뉜다", async () => {
+test("10·20·30문항 설정은 요청한 수만큼 생성하고 A4 페이지로 나뉜다", async () => {
   const originalFetch = globalThis.fetch;
   const originalKey = process.env.UPSTAGE_API_KEY;
   process.env.UPSTAGE_API_KEY = "test-key";
@@ -90,7 +81,7 @@ test("10·15·20·30문항 설정은 요청한 수만큼 생성하고 A4 페이�
       const result = await generateWorksheetQuestions({ grade: 3, semester: "1학기", unitName: "나눗셈", lessonObjective: "나눗셈 알아보기", area: "수와 연산", total, counts, standards: [{ id: "standard-id", code: "4수01-01", description: "나눗셈을 이해한다." }] });
       assert.equal(result.questions.length, total);
       assert.ok(result.questions.every((item) => item.page >= 1 && item.page <= 30));
-      assert.ok(Math.max(...result.questions.map((item) => item.page)) >= Math.ceil(total / 10));
+      assert.equal(Math.max(...result.questions.map((item) => item.page)), Math.ceil(total / 10));
     }
   } finally {
     globalThis.fetch = originalFetch;

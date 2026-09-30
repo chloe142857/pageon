@@ -435,3 +435,26 @@ export async function deleteWorksheet(formData: FormData) {
   revalidatePath("/teacher/worksheets");
   redirect(`/teacher/worksheets?notice=${encodeURIComponent("활동지를 삭제했습니다.")}`);
 }
+
+export async function reflowWorksheetPages(formData: FormData) {
+  const worksheetId = String(formData.get("worksheetId") ?? "");
+  if (!worksheetId) errorRedirect("/teacher/worksheets", "잘못된 활동지 요청입니다.");
+  const { admin, worksheet } = await requireOwnedWorksheet(worksheetId);
+  const { data: questions, error: questionsError } = await admin
+    .from("worksheet_questions")
+    .select("id, question_number")
+    .eq("worksheet_id", worksheetId)
+    .order("question_number");
+  if (questionsError || !questions?.length) errorRedirect(`/teacher/worksheets/${worksheetId}`, "문항을 찾지 못했습니다.");
+  const pageCount = Math.ceil(questions.length / 10);
+  const updates = await Promise.all(questions.map((question, index) => admin.from("worksheet_questions").update({ page: Math.floor(index / 10) + 1 }).eq("id", question.id)));
+  if (updates.some(({ error }) => error)) errorRedirect(`/teacher/worksheets/${worksheetId}`, "문항 페이지 구성을 바꾸지 못했습니다.");
+  const content = worksheet.structured_content && typeof worksheet.structured_content === "object" ? worksheet.structured_content as Record<string, unknown> : {};
+  const contentQuestions = Array.isArray(content.questions) ? content.questions : [];
+  const nextQuestions = contentQuestions.map((question, index) => question && typeof question === "object" ? { ...question, page: Math.floor(index / 10) + 1 } : question);
+  const { error } = await admin.from("worksheets").update({ total_pages: pageCount, structured_content: { ...content, questions: nextQuestions } }).eq("id", worksheetId);
+  if (error) errorRedirect(`/teacher/worksheets/${worksheetId}`, "활동지 페이지 수를 저장하지 못했습니다.");
+  revalidatePath(`/teacher/worksheets/${worksheetId}`);
+  revalidatePath(`/teacher/worksheets/${worksheetId}/print`);
+  redirect(`/teacher/worksheets/${worksheetId}?notice=${encodeURIComponent(`문항을 10개씩 ${pageCount}쪽으로 다시 배치했습니다.`)}`);
+}

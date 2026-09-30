@@ -1,7 +1,7 @@
 import type { GradingResult } from "./grading";
 
 export type AnalyticsStudent = { id: string; classroomId: string; displayName: string; studentNumber: number; active: boolean };
-export type AnalyticsWorksheet = { id: string; title: string; gradeBand: string; semester: string; area: string; unitName: string; standardIds: string[] };
+export type AnalyticsWorksheet = { id: string; title: string; gradeBand: string; grade?: number; semester: string; area: string; unitName: string; standardIds: string[] };
 export type AnalyticsQuestion = { id: string; worksheetId: string; questionNumber: number; questionText: string; score: number };
 export type AnalyticsSubmission = { id: string; worksheetId: string; studentId: string; submittedAt: string | null };
 export type AnalyticsAnswer = { submissionId: string; questionId: string; result: GradingResult; scoreAwarded: number; source: "teacher" | "auto" };

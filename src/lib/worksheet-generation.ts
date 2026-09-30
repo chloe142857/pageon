@@ -4,7 +4,7 @@ import type { QuestionType, WorksheetQuestionInput } from "./worksheet";
 
 export const generationCategories = ["short_answer", "multiple_choice", "constructed_response", "calculation", "word_problem"] as const;
 export type GenerationCategory = (typeof generationCategories)[number];
-export const generationTotals = [10, 15, 20, 30] as const;
+export const generationTotals = [10, 20, 30] as const;
 
 const generatedQuestionSchema = z.object({
   question_text: z.string().trim().min(5).max(350),
@@ -116,18 +116,7 @@ function questionType(category: GenerationCategory): QuestionType {
 }
 
 export function paginateGeneratedQuestions(questions: WorksheetQuestionInput[]) {
-  let page = 1;
-  let usedSpace = 0;
-  return questions.map((question) => {
-    const category = question.category ?? question.type;
-    const space = category === "constructed_response" ? 3 : category === "word_problem" ? 2 : 1;
-    if (usedSpace > 0 && usedSpace + space > 10) {
-      page += 1;
-      usedSpace = 0;
-    }
-    usedSpace += space;
-    return { ...question, page };
-  });
+  return questions.map((question, index) => ({ ...question, page: Math.floor(index / 10) + 1 }));
 }
 
 export async function generateWorksheetQuestions(spec: GenerationSpec) {

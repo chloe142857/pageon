@@ -40,7 +40,7 @@ export type WorksheetInput = {
 const worksheetSchema = z.object({
   title: z.string().trim().min(1, "활동지 제목을 입력하세요.").max(120),
   curriculumGrade: z.coerce.number().int().min(1).max(6).optional(),
-  gradeBand: z.string().trim().min(1, "학년군을 선택하세요.").max(30),
+  gradeBand: z.string().trim().min(1, "학년을 선택하세요.").max(30),
   semester: z.string().trim().min(1, "학기를 선택하세요.").max(30),
   area: z.string().trim().max(60),
   unitName: z.string().trim().max(120),

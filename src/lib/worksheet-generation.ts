@@ -88,7 +88,7 @@ async function generateBatch(spec: GenerationSpec, category: GenerationCategory,
           model,
           max_tokens: 3600,
           messages: [
-            { role: "system", content: "초등 수학 교사용 종이 활동지 문항을 만든다. 주어진 학년·차시 목표에 맞춰 정확한 수학 문제와 정답/해설을 작성한다. 활동지 전체에 지정된 성취기준이 있으면 참고하되 문항마다 성취기준을 부여하지 않는다. 요청 개수만큼 서로 다른 문항을 만든다. A4 한 쪽에 10문항을 인쇄할 수 있도록 문항 본문은 보기 포함 180자 이내로 간결하게 쓴다. 객관식은 보기 4개와 정답 보기를 포함한다. 문장제는 실생활 상황에서 식을 세워 푸는 문제로 만들되, answer에는 자동 비교할 수 있는 최종 값과 단위만 적고 풀이식은 explanation에 적는다. 서술형은 풀이 또는 이유를 쓰게 한다. 단순 연산은 문맥 없는 계산식이다. JSON 형식으로만 응답한다." },
+            { role: "system", content: "초등 수학 교사용 종이 활동지 문항을 만든다. 주어진 학년·차시 목표에 맞춰 정확한 수학 문제와 정답/해설을 작성한다. 활동지 전체에 지정된 성취기준이 있으면 참고하되 문항마다 성취기준을 부여하지 않는다. 요청 개수만큼 서로 다른 문항을 만든다. A4 한 쪽에 10문항을 인쇄할 수 있도록 문항 본문은 보기 포함 180자 이내로 간결하게 쓴다. 객관식은 보기 4개와 정답 보기를 포함한다. 문장제는 실생활 상황에서 식을 세워 푸는 문제로 만들되, answer에는 자동 비교할 수 있는 최종 값과 단위만 적고 풀이식은 explanation에 적는다. 서술형은 풀이 또는 이유를 쓰게 한다. 단순 연산의 question_text는 설명 문장 없이 ‘347 + 185 =’처럼 숫자와 연산기호만 포함한 한 줄 계산식으로 쓴다. JSON 형식으로만 응답한다." },
             { role: "user", content: JSON.stringify({ grade: spec.grade, semester: spec.semester, area: spec.area, unit: spec.unitName, lesson_objective: spec.lessonObjective, standards: spec.standards.map((item) => ({ code: item.code, description: item.description })), question_category: categoryLabels[category], count, batch_number: batchNumber }) },
           ],
           response_format: responseFormat,
@@ -116,7 +116,18 @@ function questionType(category: GenerationCategory): QuestionType {
 }
 
 export function paginateGeneratedQuestions(questions: WorksheetQuestionInput[]) {
-  return questions.map((question, index) => ({ ...question, page: Math.floor(index / 10) + 1 }));
+  let page = 1;
+  let usedSpace = 0;
+  return questions.map((question) => {
+    const category = question.category ?? question.type;
+    const space = category === "constructed_response" ? 3 : category === "word_problem" ? 2 : 1;
+    if (usedSpace > 0 && usedSpace + space > 10) {
+      page += 1;
+      usedSpace = 0;
+    }
+    usedSpace += space;
+    return { ...question, page };
+  });
 }
 
 export async function generateWorksheetQuestions(spec: GenerationSpec) {

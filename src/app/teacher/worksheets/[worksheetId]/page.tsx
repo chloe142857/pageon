@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { WorksheetEditor } from "@/components/worksheet-editor";
+import { WorksheetFlow } from "@/components/worksheet-flow";
 import { requireTeacher } from "@/lib/auth/teacher";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 
@@ -53,6 +54,7 @@ export default async function WorksheetDetailPage({ params, searchParams }: Page
   return (
     <section>
       <p className="back-link"><Link href="/teacher/worksheets">← 활동지 목록</Link></p>
+      <WorksheetFlow current={worksheet.status === "published" ? 3 : 2} />
       <div className="section-heading page-title"><div><span className="eyebrow">WORKSHEET DETAILS</span><h1>{worksheet.title}</h1><p className="muted">{worksheet.status === "published" ? "발행된 활동지" : "작성 중인 활동지"}{aiGenerated ? " · 자동 생성" : ""}</p></div><Link className="button-link secondary-link" href={`/teacher/worksheets/${worksheet.id}/print`}>{worksheet.status === "published" ? "인쇄하기" : "인쇄 미리보기"}</Link></div>
       {error ? <p className="danger" role="alert">{error}</p> : null}
       {notice ? <p className="notice">{notice}</p> : null}

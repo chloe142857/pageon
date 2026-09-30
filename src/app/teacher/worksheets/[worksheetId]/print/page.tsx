@@ -4,10 +4,19 @@ import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 
 import { PrintButton } from "@/components/print-button";
+import { WorksheetFlow } from "@/components/worksheet-flow";
 import { requireTeacher } from "@/lib/auth/teacher";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
 
 type PageProps = { params: Promise<{ worksheetId: string }> };
+
+function calculationLayout(questionText: string) {
+  const match = questionText.match(/(-?\d+)\s*([+\-×xX*÷/])\s*(-?\d+)\s*=?/);
+  if (!match) return null;
+  const expression = match[0];
+  const prompt = questionText.replace(expression, "").replace(/[\n\s]+/g, " ").trim().replace(/[.:]+$/, "");
+  return { prompt, top: match[1], operator: match[2] === "x" || match[2] === "X" || match[2] === "*" ? "×" : match[2] === "/" ? "÷" : match[2], bottom: match[3] };
+}
 
 export const dynamic = "force-dynamic";
 
@@ -47,11 +56,24 @@ export default async function WorksheetPrintPage({ params }: PageProps) {
   return (
     <main className="print-page">
       <div className="print-toolbar"><PrintButton /><p>{qrCode ? "브라우저 인쇄 창에서 ‘PDF로 저장’을 선택해 출력 가능한 PDF를 만드세요." : "초안 미리보기입니다. 학생 제출 QR은 발행 후 표시됩니다."}</p></div>
+      <div className="print-flow"><WorksheetFlow current={4} /></div>
       {[...pages.entries()].map(([pageNumber, pageQuestions]) => (
         <section className="worksheet-sheet" key={pageNumber}>
           <header className="worksheet-header"><div><h1>{worksheet.title}</h1><p>{gradeLabel} · {worksheet.semester} {worksheet.area ? `· ${worksheet.area}` : ""} {worksheet.unit_name ? `· ${worksheet.unit_name}` : ""}</p><p>차시 목표: {worksheet.lesson_objective}</p></div>{qrCode ? <div className="qr-block"><img src={qrCode} alt="학생 제출 QR" /><small>학생 제출 QR</small></div> : <div className="qr-block"><strong>초안</strong><small>발행 후 QR 표시</small></div>}</header>
           <p className="worksheet-meta">이름: ____________________ &nbsp;&nbsp; 번호: ________ &nbsp;&nbsp; {pageNumber}쪽 / {pages.size}쪽</p>
-          {pageQuestions?.map((question) => <article className={`print-question ${categoryById.get(question.id) === "word_problem" ? "word-problem" : question.type === "constructed_response" ? "constructed-response" : ""}`} key={question.id}><div className="question-title"><strong>{question.question_number}. {question.question_text}</strong><span>{Number(question.score)}점</span></div><div className="answer-space" /></article>)}
+          <div className="worksheet-question-grid">
+          {pageQuestions?.map((question) => {
+            const category = categoryById.get(question.id);
+            const isCalculation = category === "calculation" || question.type === "calculation";
+            const calculation = isCalculation ? calculationLayout(question.question_text) : null;
+            const layoutClass = isCalculation ? "calculation" : category === "word_problem" ? "word-problem" : question.type === "constructed_response" ? "constructed-response" : "compact-question";
+            return <article className={`print-question ${layoutClass}`} key={question.id}>
+              <div className="question-title"><strong>{question.question_number}. {calculation?.prompt || question.question_text}</strong><span>{Number(question.score)}점</span></div>
+              {calculation ? <div className="vertical-calculation" aria-label={`${calculation.top} ${calculation.operator} ${calculation.bottom}`}><span>{calculation.top}</span><span>{calculation.operator} {calculation.bottom}</span><i /></div> : null}
+              <div className="answer-space" />
+            </article>;
+          })}
+          </div>
           <footer>{qrCode ? `활동지 버전 ${worksheet.version_number} · QR에는 학생 개인정보가 포함되지 않습니다.` : "초안 미리보기 · 학생 제출 QR은 발행 후 표시됩니다."}</footer>
         </section>
       ))}

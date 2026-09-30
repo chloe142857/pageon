@@ -4,6 +4,7 @@ import { useActionState, useEffect, useMemo, useState } from "react";
 
 import { lessonsFor, mathAreas, relatedStandards, suggestedArea } from "@/lib/lesson-contents";
 import { generationCategories, generationTotals, type GenerationCategory } from "@/lib/worksheet-generation";
+import { WorksheetFlow } from "@/components/worksheet-flow";
 
 type Standard = { id: string; code: string; description: string; grade_band: string; area: string };
 type Props = { action: (previous: { error: string }, formData: FormData) => Promise<{ error: string }>; standards: Standard[] };
@@ -76,7 +77,9 @@ export function WorksheetGenerator({ action, standards }: Props) {
 
   return (
     <form action={formAction} className="form-grid generator-form" onSubmit={() => setElapsedSeconds(0)}>
-      <section className="card form-grid">
+      <WorksheetFlow current={pending ? 2 : 1} />
+      <div className="generator-layout">
+      <section className="card form-grid generator-curriculum-card">
         <div className="step-heading"><span>01</span><div><h2>어떤 수업에 사용할까요?</h2><p className="muted">학년부터 차시까지 차례로 선택해 주세요.</p></div></div>
         <div className="two-column">
           <label>학년<select name="grade" value={grade} onChange={(event) => updateCurriculum(Number(event.target.value), semester)}>{[1, 2, 3, 4, 5, 6].map((value) => <option key={value} value={value}>{value}학년</option>)}</select></label>
@@ -103,6 +106,7 @@ export function WorksheetGenerator({ action, standards }: Props) {
         <p className={sum === total ? "notice" : "danger"}>선택한 문항 {sum}개 · 전체 {total}개{sum === total ? " — 준비됐어요" : " — 개수를 맞춰 주세요"}</p>
         <p className="muted">활동지를 만든 뒤 문항과 정답을 검토하고 자유롭게 수정할 수 있어요.</p>
       </section>
+      </div>
       {state.error ? <p className="danger" role="alert">{state.error}</p> : null}
       {pending ? <div className="generation-progress" role="status" aria-live="polite"><div className="generation-progress-top"><strong>활동지를 만들고 있어요</strong><span>예상 {estimatedProgress}%</span></div><div className="generation-progress-track" role="progressbar" aria-label="예상 생성 진행률" aria-valuenow={estimatedProgress} aria-valuemin={0} aria-valuemax={100}><span style={{ width: `${estimatedProgress}%` }} /></div><p>{elapsedSeconds < 8 ? "수업 내용과 문항 구성을 확인하는 중" : "문항과 정답을 만들고 확인하는 중"} · {elapsedSeconds}초 경과</p><small>실제 생성 속도는 문항 수에 따라 달라집니다. 완료되면 검토 화면으로 이동합니다.</small></div> : null}
       <button type="submit" className="generator-submit" disabled={pending || !lesson || sum !== total}>{pending ? "생성 중…" : "활동지 만들기 →"}</button>

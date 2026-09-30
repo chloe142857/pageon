@@ -40,10 +40,6 @@ function blankQuestion(): QuestionDraft {
   return { type: "short_answer", questionText: "", answer: "", explanation: "", score: 1, page: 1, answerBBox: null };
 }
 
-function formatBBox(value: QuestionDraft["answerBBox"]) {
-  return value ? `${value.x}, ${value.y}, ${value.width}, ${value.height}` : "";
-}
-
 export function WorksheetEditor({ action, worksheetId, importId, standards, initial }: Props) {
   const initialGrade = initial?.curriculumGrade ?? initialGradeForBand(initial?.gradeBand || "3~4학년");
   const initialUnits = lessonsFor(initialGrade, initial?.semester || "1학기");
@@ -151,7 +147,7 @@ export function WorksheetEditor({ action, worksheetId, importId, standards, init
             <label>문항 내용<textarea name={`question-${index}-text`} value={question.questionText} onChange={(event) => { updateQuestion(index, "questionText", event.target.value); markEdited(); }} required /></label>
             <div className="two-column"><label>정답<input name={`question-${index}-answer`} value={question.answer} onChange={(event) => { updateQuestion(index, "answer", event.target.value); markEdited(); }} required /></label><label>페이지<input name={`question-${index}-page`} type="number" min="1" max="100" value={question.page} onChange={(event) => { updateQuestion(index, "page", Number(event.target.value)); markEdited(); }} required /></label></div>
             <label>해설 (선택)<textarea name={`question-${index}-explanation`} value={question.explanation} onChange={(event) => { updateQuestion(index, "explanation", event.target.value); markEdited(); }} /></label>
-            <details className="advanced-options"><summary>답안을 읽을 위치 조정 · 선택 사항</summary><label>답안 위치<input name={`question-${index}-answer-bbox`} defaultValue={formatBBox(question.answerBBox)} placeholder="예: 0.1, 0.5, 0.8, 0.2" /><span className="muted">별도로 지정할 위치가 없다면 비워 두세요. 지정할 때는 왼쪽, 위쪽, 너비, 높이를 0~1 사이 숫자로 입력합니다.</span></label></details>
+            <input type="hidden" name={`question-${index}-answer-bbox`} value="" />
             {questions.length > 1 ? <button type="button" className="secondary" onClick={() => { setQuestions((current) => current.filter((_, questionIndex) => questionIndex !== index)); markEdited(); }}>이 문항 삭제</button> : null}
           </fieldset>
         ))}

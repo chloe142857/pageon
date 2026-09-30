@@ -96,7 +96,8 @@ select[multiple] option { padding: 8px; white-space: normal; border-radius: 6px;
 .legal-backdrop { position: fixed; inset: 0; z-index: 90; display: grid; place-items: center; padding: 20px; background: #071a2e80; }.legal-modal { width: min(100%, 600px); max-height: min(700px, calc(100svh - 40px)); overflow: auto; padding: 28px; border-radius: 22px; background: #fff; box-shadow: 0 25px 70px #071a2e55; }.legal-modal p { color: #50657a; line-height: 1.8; }.legal-modal-heading { display: flex; justify-content: space-between; gap: 15px; align-items: start; }.legal-modal-heading h2 { margin: 0 0 12px; }.modal-close { display: grid; place-items: center; min-width: 36px; min-height: 36px; padding: 0; border-radius: 50%; background: #edf4f5; color: var(--navy); font-size: 25px; line-height: 1; }
 .step-heading { display: flex; align-items: flex-start; gap: 15px; }.step-heading > span { display: grid; place-items: center; flex: 0 0 37px; width: 37px; height: 37px; border-radius: 12px; background: #e0f5f2; color: var(--teal-dark); font-size: 13px; font-weight: 850; }.step-heading h2 { margin: 2px 0 4px; }.step-heading p { margin: 0; }
 .standards-field { display: grid; min-width: 0; align-content: start; gap: 8px; }.field-label { color: var(--navy); font-size: 14px; font-weight: 650; }.standards-list { display: grid; gap: 4px; min-height: 170px; max-height: 230px; overflow-y: auto; padding: 7px; border: 1px solid #cbdade; border-radius: 12px; background: #fff; }.standard-option { display: flex; align-items: flex-start; gap: 9px; padding: 8px 10px; border-radius: 8px; cursor: pointer; color: var(--ink); font-weight: 500; line-height: 1.5; }.standard-option:hover { background: #eff8f7; }.standard-option input { flex: 0 0 auto; margin-top: 2px; }.standard-option strong { color: var(--teal-dark); }.standards-list > p { padding: 10px; margin: 0; font-size: 13px; }
-.generator-form { max-width: 980px; }.generator-submit { justify-self: end; min-width: 240px; background: var(--teal-dark); }.generator-submit:hover:not(:disabled) { background: #08797e; }
+.generator-form { max-width: 1120px; }.generator-layout { display: grid; grid-template-columns: minmax(0, 1.16fr) minmax(330px, .84fr); gap: 20px; align-items: start; }.generator-layout > .card { margin: 0; }.generator-submit { justify-self: end; min-width: 240px; background: var(--teal-dark); }.generator-submit:hover:not(:disabled) { background: #08797e; }
+.worksheet-flow { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; padding: 15px 18px; border: 1px solid #d9e7e7; border-radius: 18px; background: #fff; }.worksheet-flow-step { position: relative; display: flex; align-items: center; gap: 9px; min-width: 0; color: #97aab2; font-size: 13px; }.worksheet-flow-step:not(:last-child)::after { position: absolute; top: 17px; left: calc(100% - 5px); width: 10px; height: 1px; content: ""; background: #d4e1e2; }.worksheet-flow-step > span { display: grid; place-items: center; flex: 0 0 34px; width: 34px; height: 34px; border-radius: 50%; background: #edf2f3; font-size: 12px; font-weight: 800; }.worksheet-flow-step strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }.worksheet-flow-step.complete { color: #168b86; }.worksheet-flow-step.complete > span { color: #fff; background: #28aaa1; }.worksheet-flow-step.current { color: var(--navy); }.worksheet-flow-step.current > span { color: #fff; background: var(--navy); box-shadow: 0 0 0 4px #dbeeea; }
 details { border-radius: 12px; }
 summary { cursor: pointer; color: var(--teal-dark); font-weight: 700; }
 .advanced-options { padding: 13px 16px; background: #f2f7f8; }
@@ -175,19 +176,11 @@ button.text-button:hover { color: var(--navy); background: #f1f6f7; box-shadow: 
 .generation-progress-track { height: 10px; margin: 12px 0; border-radius: 999px; background: #cfe7e5; overflow: hidden; }
 .generation-progress-track span { display: block; height: 100%; border-radius: inherit; background: var(--teal); transition: width 1s linear; }
 .generation-progress p { margin: 0 0 4px; }.generation-progress small { color: var(--muted); }
-.print-page { max-width: 210mm; margin: 0 auto; padding: 20px 0; color: #111; background: #eef1f6; }
-.print-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 18px; }
-.worksheet-sheet { width: 210mm; min-height: 297mm; margin: 0 0 20px; padding: 10mm; background: white; box-shadow: 0 1px 5px #b9c0cc; display: flex; flex-direction: column; font-size: 10.5pt; }
-.worksheet-header { display: flex; justify-content: space-between; gap: 12px; padding-bottom: 2mm; border-bottom: 1.5px solid #111; }
-.worksheet-header h1 { margin: 0 0 3px; font-size: 17pt; }.worksheet-header p { margin: 2px 0; font-size: 9pt; }
-.qr-block { text-align: center; flex: 0 0 21mm; }.qr-block img { width: 20mm; height: 20mm; }.qr-block small { display: block; font-size: 7pt; }
-.worksheet-meta { margin: 0; padding: 2mm 0; border-bottom: 1px solid #999; font-size: 9pt; }
-.print-question { padding: 1.7mm 0; border-bottom: 1px solid #ddd; break-inside: avoid; }
-.question-title { display: flex; justify-content: space-between; gap: 8px; white-space: pre-wrap; line-height: 1.3; }
-.question-title strong { font-weight: 600; }.question-title > span { flex: 0 0 auto; font-size: 8pt; }
-.answer-space { min-height: 7mm; margin-top: 1mm; border: 1px dashed #b1bbc8; }
-.print-question.word-problem .answer-space { min-height: 9mm; }.print-question.constructed-response .answer-space { min-height: 11mm; }
-.worksheet-sheet footer { margin-top: auto; padding-top: 2mm; color: #555; font-size: 8pt; }
+.print-page { max-width: 210mm; margin: 0 auto; padding: 20px 0; color: #15212b; background: #eef1f6; }
+.print-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 14px; }.print-flow { margin: 0 0 14px; }.print-flow .worksheet-flow { box-shadow: 0 1px 4px #17325010; }
+.worksheet-sheet { box-sizing: border-box; width: 210mm; height: 297mm; margin: 0 0 20px; padding: 11mm 12mm 9mm; background: white; box-shadow: 0 1px 5px #b9c0cc; display: flex; flex-direction: column; font-size: 10.5pt; overflow: hidden; }
+.worksheet-header { display: flex; justify-content: space-between; gap: 12px; padding: 0 0 2.5mm; border-bottom: 1.5px solid #142533; }.worksheet-header h1 { margin: 0 0 3px; font-size: 16pt; letter-spacing: -.04em; }.worksheet-header p { margin: 2px 0; font-size: 8.5pt; }.qr-block { text-align: center; flex: 0 0 21mm; }.qr-block img { width: 19mm; height: 19mm; }.qr-block small { display: block; font-size: 6.8pt; }.worksheet-meta { margin: 0 0 3.5mm; padding: 2.2mm 0; border-bottom: 1px solid #aebac0; font-size: 8.7pt; }
+.worksheet-question-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-content: start; gap: 4.2mm 6.5mm; }.print-question { min-width: 0; padding: 3mm 3.2mm; border: 1px solid #d5dfe2; border-radius: 2.5mm; background: #fff; break-inside: avoid; }.question-title { display: flex; justify-content: space-between; align-items: flex-start; gap: 7px; white-space: pre-wrap; line-height: 1.5; }.question-title strong { font-weight: 650; }.question-title > span { flex: 0 0 auto; color: #60727a; font-size: 7.6pt; }.answer-space { min-height: 10mm; margin-top: 2.5mm; border: 1px dashed #aebfc4; border-radius: 1.5mm; background: linear-gradient(135deg, #fbfdfd, #fff); }.print-question.compact-question .answer-space { min-height: 8.5mm; }.print-question.word-problem, .print-question.constructed-response { grid-column: 1 / -1; }.print-question.word-problem .answer-space { min-height: 18mm; }.print-question.constructed-response .answer-space { min-height: 25mm; }.print-question.calculation { display: grid; grid-template-columns: minmax(0, 1fr) 32mm; align-items: end; column-gap: 3mm; min-height: 29mm; }.print-question.calculation .question-title { grid-column: 1 / -1; }.print-question.calculation .answer-space { min-height: 18mm; margin: 0; }.vertical-calculation { display: grid; justify-items: end; min-width: 25mm; margin: 2mm 0 0; padding-bottom: 1.3mm; border-bottom: 1.4px solid #1c2b35; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 14pt; line-height: 1.22; letter-spacing: .14em; }.vertical-calculation span { white-space: pre; }.vertical-calculation i { display: none; }.worksheet-sheet footer { margin-top: auto; padding-top: 2.5mm; color: #66747b; font-size: 7.6pt; }
 
 @media (max-width: 1080px) {
   .site-header-inner { flex-wrap: wrap; justify-content: space-between; padding: 13px 0 9px; }
@@ -203,7 +196,7 @@ button.text-button:hover { color: var(--navy); background: #f1f6f7; box-shadow: 
   .dashboard-hero { grid-template-columns: 1fr 230px; }
   .dashboard-hero-graphic { transform: scale(.82); transform-origin: center right; }
   .filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .classroom-grid, .classroom-detail-grid { grid-template-columns: 1fr; }
+  .classroom-grid, .classroom-detail-grid, .generator-layout { grid-template-columns: 1fr; }
 }
 @media (max-width: 640px) {
   .page, .landing-header, .landing-hero, .landing-steps, .service-footer, .site-header-inner { width: min(100% - 32px, 1220px); }
@@ -225,14 +218,14 @@ button.text-button:hover { color: var(--navy); background: #f1f6f7; box-shadow: 
   .dashboard-hero { grid-template-columns: 1fr; min-height: 0; padding: 32px; }.dashboard-hero-graphic { display: none; }.dashboard-hero h1 { font-size: 35px; }
   .quick-card { min-height: 135px; }.quick-card h3 { margin-top: 14px; }
   .capture-actions { flex-direction: column; align-items: stretch; }.capture-actions button { width: 100%; }
-  .generator-submit { justify-self: stretch; min-width: 0; }
+  .generator-submit { justify-self: stretch; min-width: 0; }.worksheet-flow { gap: 7px; padding: 12px; }.worksheet-flow-step { gap: 5px; font-size: 10px; }.worksheet-flow-step > span { flex-basis: 27px; width: 27px; height: 27px; font-size: 10px; }.worksheet-flow-step:not(:last-child)::after { top: 13px; }
   .print-toolbar { align-items: stretch; flex-direction: column; }
 }
 @media print {
   @page { size: A4; margin: 0; }
   html, body { width: 210mm; margin: 0; background: white; }
-  .print-toolbar { display: none; }
+  .print-toolbar, .print-flow { display: none; }
   .print-page { width: 210mm; max-width: none; margin: 0; padding: 0; background: white; }
-  .worksheet-sheet { width: 210mm; height: 297mm; min-height: 0; margin: 0; padding: 10mm; box-shadow: none; break-after: page; page-break-after: always; }
+  .worksheet-sheet { width: 210mm; height: 297mm; min-height: 0; margin: 0; padding: 11mm 12mm 9mm; box-shadow: none; break-after: page; page-break-after: always; }
   .worksheet-sheet:last-of-type { break-after: auto; page-break-after: auto; }
 }

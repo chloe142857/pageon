@@ -3,10 +3,12 @@ import QRCode from "qrcode";
 import { headers } from "next/headers";
 import { notFound } from "next/navigation";
 
+import { GeometryDiagram as GeometryDiagramFigure } from "@/components/geometry-diagram";
 import { PrintButton } from "@/components/print-button";
 import { WorksheetFlow } from "@/components/worksheet-flow";
 import { requireTeacher } from "@/lib/auth/teacher";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
+import { geometryDiagramKinds, type GeometryDiagram } from "@/lib/worksheet";
 
 type PageProps = { params: Promise<{ worksheetId: string }> };
 
@@ -16,6 +18,10 @@ function calculationLayout(questionText: string) {
   const expression = match[0];
   const prompt = questionText.replace(expression, "").replace(/[\n\s]+/g, " ").trim().replace(/[.:]+$/, "");
   return { prompt, top: match[1], operator: match[2] === "x" || match[2] === "X" || match[2] === "*" ? "×" : match[2] === "/" ? "÷" : match[2], bottom: match[3] };
+}
+
+function isGeometryDiagram(value: unknown): value is GeometryDiagram {
+  return Boolean(value && typeof value === "object" && geometryDiagramKinds.includes((value as GeometryDiagram).kind) && Array.isArray((value as GeometryDiagram).labels));
 }
 
 export const dynamic = "force-dynamic";
@@ -51,6 +57,7 @@ export default async function WorksheetPrintPage({ params }: PageProps) {
   const structuredWorksheet = structured.worksheet && typeof structured.worksheet === "object" ? structured.worksheet as Record<string, unknown> : {};
   const structuredQuestions = Array.isArray(structured.questions) ? structured.questions as Array<Record<string, unknown>> : [];
   const categoryById = new Map(structuredQuestions.map((question) => [question.question_id, question.category]));
+  const diagramById = new Map(structuredQuestions.flatMap((question) => isGeometryDiagram(question.diagram) ? [[question.question_id, question.diagram] as const] : []));
   const gradeLabel = typeof structuredWorksheet.curriculum_grade === "number" ? `${structuredWorksheet.curriculum_grade}학년` : worksheet.grade_band;
 
   return (
@@ -66,11 +73,16 @@ export default async function WorksheetPrintPage({ params }: PageProps) {
             const category = categoryById.get(question.id);
             const isCalculation = category === "calculation" || question.type === "calculation";
             const calculation = isCalculation ? calculationLayout(question.question_text) : null;
+            const diagram = diagramById.get(question.id);
             const layoutClass = isCalculation ? "calculation" : category === "word_problem" ? "word-problem" : question.type === "constructed_response" ? "constructed-response" : "compact-question";
             return <article className={`print-question ${layoutClass}`} key={question.id}>
-              <div className="question-title"><strong>{question.question_number}. {calculation?.prompt || question.question_text}</strong><span>{Number(question.score)}점</span></div>
-              {calculation ? <div className="vertical-calculation" aria-label={`${calculation.top} ${calculation.operator} ${calculation.bottom}`}><span>{calculation.top}</span><span>{calculation.operator} {calculation.bottom}</span><i /></div> : null}
-              <div className="answer-space" />
+              <div className="question-title"><strong>{question.question_number}. {calculation?.prompt || question.question_text}</strong></div>
+              {calculation ? calculation.operator === "÷"
+                ? <div className="long-division" aria-label={`${calculation.top} 나누기 ${calculation.bottom}`}><span>{calculation.bottom}</span><b>{calculation.top}</b></div>
+                : <div className="vertical-calculation" aria-label={`${calculation.top} ${calculation.operator} ${calculation.bottom}`}><span>{calculation.top}</span><span>{calculation.operator} {calculation.bottom}</span></div>
+                : null}
+              {diagram ? <GeometryDiagramFigure diagram={diagram} className="print-geometry-diagram" /> : null}
+              <div className={calculation ? "calculation-answer-line" : "answer-space"} />
             </article>;
           })}
           </div>

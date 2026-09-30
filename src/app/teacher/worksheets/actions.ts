@@ -94,6 +94,7 @@ async function replaceWorksheetContent(
       score: Number(question.score),
       page: question.page,
       answerBBox: question.answer_bbox as { x: number; y: number; width: number; height: number } | null,
+      diagram: input.questions[question.question_number - 1]?.diagram ?? null,
     })),
   );
   if (generationMetadata) Object.assign(structuredContent, { generation: generationMetadata });

@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-const steps = ["수업 선택", "문항 확인", "활동지 확인", "인쇄 미리보기"];
+const steps = ["수업 선택", "문항 검토", "발행 준비", "인쇄 미리보기"];
 
 type Props = {
   current: 1 | 2 | 3 | 4;

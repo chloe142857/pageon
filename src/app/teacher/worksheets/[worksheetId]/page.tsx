@@ -5,10 +5,15 @@ import { WorksheetEditor } from "@/components/worksheet-editor";
 import { WorksheetFlow } from "@/components/worksheet-flow";
 import { requireTeacher } from "@/lib/auth/teacher";
 import { createSupabaseAdminClient } from "@/lib/supabase/server";
+import { geometryDiagramKinds, type GeometryDiagram } from "@/lib/worksheet";
 
 import { publishWorksheet, reflowWorksheetPages, saveWorksheet } from "../actions";
 
 type PageProps = { params: Promise<{ worksheetId: string }>; searchParams: Promise<{ error?: string; notice?: string }> };
+
+function isGeometryDiagram(value: unknown): value is GeometryDiagram {
+  return Boolean(value && typeof value === "object" && geometryDiagramKinds.includes((value as GeometryDiagram).kind) && Array.isArray((value as GeometryDiagram).labels));
+}
 
 export const dynamic = "force-dynamic";
 
@@ -47,7 +52,7 @@ export default async function WorksheetDetailPage({ params, searchParams }: Page
     lessonObjective: worksheet.lesson_objective,
     totalPages: worksheet.total_pages,
     worksheetStandardIds: worksheetStandards?.map((item) => item.achievement_standard_id) ?? [],
-    questions: (questions ?? []).map((question, index) => ({ type: question.type, category: contentQuestions[index]?.category === "word_problem" ? "word_problem" as const : question.type, questionText: question.question_text, answer: question.answer, explanation: question.explanation, score: Number(question.score), page: question.page, answerBBox: question.answer_bbox as { x: number; y: number; width: number; height: number } | null })),
+    questions: (questions ?? []).map((question, index) => ({ type: question.type, category: contentQuestions[index]?.category === "word_problem" ? "word_problem" as const : question.type, questionText: question.question_text, answer: question.answer, explanation: question.explanation, score: Number(question.score), page: question.page, answerBBox: question.answer_bbox as { x: number; y: number; width: number; height: number } | null, diagram: isGeometryDiagram(contentQuestions[index]?.diagram) ? contentQuestions[index].diagram : null })),
     generationSource: worksheet.generation_source as "manual" | "mock" | "pdf_import",
   };
 
@@ -55,7 +60,7 @@ export default async function WorksheetDetailPage({ params, searchParams }: Page
     <section>
       <p className="back-link"><Link href="/teacher/worksheets">← 활동지 목록</Link></p>
       <WorksheetFlow current={worksheet.status === "published" ? 3 : 2} links={{ 1: "/teacher/worksheets/new" }} />
-      <div className="section-heading page-title"><div><span className="eyebrow">WORKSHEET DETAILS</span><h1>{worksheet.title}</h1><p className="muted">{worksheet.status === "published" ? "발행된 활동지" : "작성 중인 활동지"}{aiGenerated ? " · 자동 생성" : ""}</p></div><Link className="button-link secondary-link" href={`/teacher/worksheets/${worksheet.id}/print`}>다음: 인쇄 미리보기</Link></div>
+      <div className="section-heading page-title"><div><span className="eyebrow">WORKSHEET DETAILS</span><h1>{worksheet.title}</h1><p className="muted">{worksheet.status === "published" ? "발행된 활동지" : "작성 중인 활동지"}{aiGenerated ? " · 자동 생성" : ""}</p></div></div>
       {error ? <p className="danger" role="alert">{error}</p> : null}
       {notice ? <p className="notice">{notice}</p> : null}
       {worksheet.status === "draft" ? <form action={publishWorksheet} className="card publish-panel"><input type="hidden" name="worksheetId" value={worksheet.id} /><div><h2>활동지 구성을 확인했나요?</h2><p className="muted">문항과 정답을 저장한 뒤 발행하면 학생 제출용 QR이 준비됩니다.</p></div><button type="submit">다음: 활동지 발행하기</button></form> : <div className="card publish-panel"><div><h2>학생에게 나눠줄 준비가 되었어요</h2><p className="muted">마지막 단계에서 QR을 확인하고 인쇄할 수 있어요.</p></div><Link className="button-link" href={`/teacher/worksheets/${worksheet.id}/print`}>다음: 인쇄 미리보기</Link></div>}

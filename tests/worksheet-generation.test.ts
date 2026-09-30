@@ -50,7 +50,7 @@ test("Upstage는 선택한 유형 개수와 성취기준으로 문제를 생성�
     const request = JSON.parse(body.messages[1].content);
     assert.equal(request.grade, 3);
     assert.equal(body.response_format.type, "json_schema");
-    return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ questions: Array.from({ length: request.count }, (_, index) => ({ question_text: `12 ÷ ${index + 1}의 몫을 구하세요.`, answer: "12", explanation: "12를 나눕니다." })) }) } }] }), { status: 200 });
+    return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ questions: Array.from({ length: request.count }, (_, index) => ({ question_text: `12 ÷ ${index + 1}의 몫을 구하세요.`, answer: "12", explanation: "12를 나눕니다.", diagram: null })) }) } }] }), { status: 200 });
   };
   try {
     const result = await generateWorksheetQuestions({
@@ -73,7 +73,7 @@ test("10·20·30문항 설정은 요청한 수만큼 생성하고 A4 페이지�
   process.env.UPSTAGE_API_KEY = "test-key";
   globalThis.fetch = async (_url, init) => {
     const request = JSON.parse(JSON.parse(String(init?.body)).messages[1].content);
-    return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ questions: Array.from({ length: request.count }, (_, index) => ({ question_text: `${request.question_category} ${request.batch_number}-${index + 1}의 답을 구하세요.`, answer: "1", explanation: "계산합니다." })) }) } }] }), { status: 200 });
+    return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ questions: Array.from({ length: request.count }, (_, index) => ({ question_text: `${request.question_category} ${request.batch_number}-${index + 1}의 답을 구하세요.`, answer: "1", explanation: "계산합니다.", diagram: null })) }) } }] }), { status: 200 });
   };
   try {
     for (const total of generationTotals) {
@@ -97,7 +97,7 @@ test("성취기준을 선택하지 않아도 생성할 수 있다", async () => 
     const body = JSON.parse(String(init?.body));
     const request = JSON.parse(body.messages[1].content);
     assert.deepEqual(request.standards, []);
-    return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ questions: [{ question_text: "12 ÷ 3을 계산하세요.", answer: "4", explanation: "3 × 4 = 12" }] }) } }] }), { status: 200 });
+    return new Response(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ questions: [{ question_text: "12 ÷ 3을 계산하세요.", answer: "4", explanation: "3 × 4 = 12", diagram: null }] }) } }] }), { status: 200 });
   };
   try {
     const result = await generateWorksheetQuestions({ grade: 3, semester: "1학기", unitName: "나눗셈", lessonObjective: "몫 구하기", area: "수와 연산", total: 1, counts: { short_answer: 0, multiple_choice: 0, constructed_response: 0, calculation: 1, word_problem: 0 }, standards: [] });

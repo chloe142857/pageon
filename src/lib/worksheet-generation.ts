@@ -1,15 +1,17 @@
 import { z } from "zod";
 
-import type { QuestionType, WorksheetQuestionInput } from "./worksheet";
+import type { GeometryDiagram, QuestionType, WorksheetQuestionInput } from "./worksheet";
 
 export const generationCategories = ["short_answer", "multiple_choice", "constructed_response", "calculation", "word_problem"] as const;
 export type GenerationCategory = (typeof generationCategories)[number];
 export const generationTotals = [10, 20, 30] as const;
+const geometryDiagramKinds = ["angle", "triangle", "quadrilateral"] as const;
 
 const generatedQuestionSchema = z.object({
   question_text: z.string().trim().min(5).max(350),
   answer: z.string().trim().min(1).max(500),
   explanation: z.string().trim().min(1).max(1000),
+  diagram: z.object({ kind: z.enum(geometryDiagramKinds), labels: z.array(z.string().trim().min(1).max(8)).max(6) }).nullable(),
 });
 
 const generatedBatchSchema = z.object({ questions: z.array(generatedQuestionSchema) });
@@ -67,8 +69,14 @@ async function generateBatch(spec: GenerationSpec, category: GenerationCategory,
                 question_text: { type: "string" },
                 answer: { type: "string" },
                 explanation: { type: "string" },
+                diagram: {
+                  anyOf: [
+                    { type: "null" },
+                    { type: "object", properties: { kind: { type: "string", enum: [...geometryDiagramKinds] }, labels: { type: "array", items: { type: "string" }, maxItems: 6 } }, required: ["kind", "labels"], additionalProperties: false },
+                  ],
+                },
               },
-              required: ["question_text", "answer", "explanation"],
+              required: ["question_text", "answer", "explanation", "diagram"],
               additionalProperties: false,
             },
           },
@@ -88,7 +96,7 @@ async function generateBatch(spec: GenerationSpec, category: GenerationCategory,
           model,
           max_tokens: 3600,
           messages: [
-            { role: "system", content: "초등 수학 교사용 종이 활동지 문항을 만든다. 모든 문항, 보기, 상황, 단위, 정답과 해설은 자연스러운 한국어로만 쓴다. 영어 단어, 영어권 인명, 외국 화폐, 영문 상품명(예: sweets)은 절대 사용하지 않는다. 주어진 학년·차시 목표에 맞춰 정확한 수학 문제와 정답/해설을 작성한다. 활동지 전체에 지정된 성취기준이 있으면 참고하되 문항마다 성취기준을 부여하지 않는다. 요청 개수만큼 서로 다른 문항을 만든다. A4 한 쪽에 10문항을 인쇄할 수 있도록 문항 본문은 보기 포함 180자 이내로 간결하게 쓴다. 객관식은 보기 4개와 정답 보기를 포함한다. 문장제는 우리나라 초등학생에게 익숙한 학교·가정·동네 상황에서 식을 세워 푸는 문제로 만들되, answer에는 자동 비교할 수 있는 최종 값과 단위만 적고 풀이식은 explanation에 적는다. 서술형은 풀이 또는 이유를 쓰게 한다. 단순 연산의 question_text는 설명 문장 없이 ‘347 + 185 =’처럼 숫자와 연산기호만 포함한 한 줄 계산식으로 쓴다. JSON 형식으로만 응답한다." },
+            { role: "system", content: "초등 수학 교사용 종이 활동지 문항을 만든다. 모든 문항, 보기, 상황, 단위, 정답과 해설은 자연스러운 한국어로만 쓴다. 영어 단어, 영어권 인명, 외국 화폐, 영문 상품명(예: sweets)은 절대 사용하지 않는다. 주어진 학년·차시 목표와 성취기준에 벗어난 문항은 절대 만들지 않는다. 예를 들어 도형과 측정 수업에는 관련 없는 사칙연산 문항을 섞지 않는다. 주어진 학년·차시 목표에 맞춰 정확한 수학 문제와 정답/해설을 작성한다. 활동지 전체에 지정된 성취기준이 있으면 참고하되 문항마다 성취기준을 부여하지 않는다. 요청 개수만큼 서로 다른 문항을 만든다. A4 한 쪽에 10문항을 인쇄할 수 있도록 문항 본문은 보기 포함 180자 이내로 간결하게 쓴다. 객관식은 보기 4개와 정답 보기를 포함한다. 문장제는 우리나라 초등학생에게 익숙한 학교·가정·동네 상황에서 식을 세워 푸는 문제로 만들되, answer에는 자동 비교할 수 있는 최종 값과 단위만 적고 풀이식은 explanation에 적는다. 서술형은 풀이 또는 이유를 쓰게 한다. 단순 연산의 question_text는 설명 문장 없이 ‘347 + 185 =’처럼 숫자와 연산기호만 포함한 한 줄 계산식으로 쓴다. 도형을 보아야만 풀 수 있는 문항에는 diagram을 반드시 넣는다. diagram.kind는 angle, triangle, quadrilateral 중 하나이고 labels에는 그림에 표시할 한글 기호를 넣는다. 그림이 필요 없는 문항의 diagram은 null이다. 그림이 없는 상태에서 ‘다음 도형’처럼 그림을 참조하는 문항은 절대 만들지 않는다. JSON 형식으로만 응답한다." },
             { role: "user", content: JSON.stringify({ grade: spec.grade, semester: spec.semester, area: spec.area, unit: spec.unitName, lesson_objective: spec.lessonObjective, standards: spec.standards.map((item) => ({ code: item.code, description: item.description })), question_category: categoryLabels[category], count, batch_number: batchNumber }) },
           ],
           response_format: responseFormat,
@@ -134,6 +142,7 @@ export async function generateWorksheetQuestions(spec: GenerationSpec) {
       score: category === "constructed_response" ? 3 : category === "word_problem" ? 2 : 1,
       page: 1,
       answerBBox: null,
+      diagram: item.diagram as GeometryDiagram | null,
     };
   }));
   if (questions.length !== spec.total) throw new Error("AI 생성 문항 수가 요청과 다릅니다.");

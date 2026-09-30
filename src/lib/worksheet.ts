@@ -12,6 +12,8 @@ export type GenerationSource = "manual" | "mock" | "pdf_import";
 export type QuestionCategory = QuestionType | "word_problem";
 
 export type NormalizedBox = { x: number; y: number; width: number; height: number };
+export const geometryDiagramKinds = ["angle", "triangle", "quadrilateral"] as const;
+export type GeometryDiagram = { kind: (typeof geometryDiagramKinds)[number]; labels: string[] };
 
 export type WorksheetQuestionInput = {
   type: QuestionType;
@@ -22,6 +24,7 @@ export type WorksheetQuestionInput = {
   score: number;
   page: number;
   answerBBox: NormalizedBox | null;
+  diagram?: GeometryDiagram | null;
 };
 
 export type WorksheetInput = {
@@ -61,6 +64,7 @@ const worksheetSchema = z.object({
       width: z.number().positive().max(1),
       height: z.number().positive().max(1),
     }).nullable(),
+    diagram: z.object({ kind: z.enum(geometryDiagramKinds), labels: z.array(z.string().trim().min(1).max(8)).max(6) }).nullable().optional(),
   })).min(1, "문항을 하나 이상 입력하세요.").max(30),
 });
 
@@ -75,6 +79,7 @@ export function parseWorksheetFormData(formData: FormData): WorksheetInput {
     score: formData.get(`question-${index}-score`),
     page: formData.get(`question-${index}-page`),
     answerBBox: parseAnswerBBox(formData.get(`question-${index}-answer-bbox`)),
+    diagram: parseDiagram(formData.get(`question-${index}-diagram`)),
   }));
 
   const parsed = worksheetSchema.safeParse({
@@ -115,6 +120,16 @@ function parseAnswerBBox(value: FormDataEntryValue | null): NormalizedBox | null
   return { x, y, width, height };
 }
 
+function parseDiagram(value: FormDataEntryValue | null): GeometryDiagram | null {
+  if (typeof value !== "string" || !value.trim()) return null;
+  try {
+    const parsed = z.object({ kind: z.enum(geometryDiagramKinds), labels: z.array(z.string().trim().min(1).max(8)).max(6) }).parse(JSON.parse(value));
+    return parsed;
+  } catch {
+    throw new Error("도형 그림 정보를 확인하지 못했습니다.");
+  }
+}
+
 export function buildStructuredContent(
   worksheet: Omit<WorksheetInput, "questions"> & { id: string; versionNumber: number; generationSource: GenerationSource },
   questions: Array<WorksheetQuestionInput & { id: string }>,
@@ -145,6 +160,7 @@ export function buildStructuredContent(
       explanation: question.explanation,
       score: question.score,
       page: question.page,
+      diagram: question.diagram ?? null,
       regions: {
         coordinate_space: "normalized_0_to_1",
         question_bbox: null,

@@ -24,6 +24,13 @@ function isGeometryDiagram(value: unknown): value is GeometryDiagram {
   return Boolean(value && typeof value === "object" && geometryDiagramKinds.includes((value as GeometryDiagram).kind) && Array.isArray((value as GeometryDiagram).labels));
 }
 
+function inferredGeometryDiagram(questionText: string): GeometryDiagram | null {
+  if (/삼각형/.test(questionText)) return { kind: "triangle", labels: ["ㄱ", "ㄴ", "ㄷ"] };
+  if (/사각형|네모/.test(questionText)) return { kind: "quadrilateral", labels: ["ㄱ", "ㄴ", "ㄷ", "ㄹ"] };
+  if (/각|직각/.test(questionText)) return { kind: "angle", labels: ["ㄱ", "ㄴ", "ㄷ"] };
+  return null;
+}
+
 export const dynamic = "force-dynamic";
 
 export default async function WorksheetPrintPage({ params }: PageProps) {
@@ -73,7 +80,7 @@ export default async function WorksheetPrintPage({ params }: PageProps) {
             const category = categoryById.get(question.id);
             const isCalculation = category === "calculation" || question.type === "calculation";
             const calculation = isCalculation ? calculationLayout(question.question_text) : null;
-            const diagram = diagramById.get(question.id);
+            const diagram = diagramById.get(question.id) ?? inferredGeometryDiagram(question.question_text);
             const layoutClass = isCalculation ? "calculation" : category === "word_problem" ? "word-problem" : question.type === "constructed_response" ? "constructed-response" : "compact-question";
             return <article className={`print-question ${layoutClass}`} key={question.id}>
               <div className="question-title"><strong>{question.question_number}. {calculation?.prompt || question.question_text}</strong></div>

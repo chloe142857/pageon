@@ -59,11 +59,11 @@ export default async function WorksheetDetailPage({ params, searchParams }: Page
   return (
     <section>
       <p className="back-link"><Link href="/teacher/worksheets">← 활동지 목록</Link></p>
-      <WorksheetFlow current={worksheet.status === "published" ? 3 : 2} links={{ 1: "/teacher/worksheets/new" }} />
+      <WorksheetFlow current={2} links={{ 1: "/teacher/worksheets/new" }} />
       <div className="section-heading page-title"><div><span className="eyebrow">WORKSHEET DETAILS</span><h1>{worksheet.title}</h1><p className="muted">{worksheet.status === "published" ? "발행된 활동지" : "작성 중인 활동지"}{aiGenerated ? " · 자동 생성" : ""}</p></div></div>
       {error ? <p className="danger" role="alert">{error}</p> : null}
       {notice ? <p className="notice">{notice}</p> : null}
-      {worksheet.status === "draft" ? <form action={publishWorksheet} className="card publish-panel"><input type="hidden" name="worksheetId" value={worksheet.id} /><div><h2>활동지 구성을 확인했나요?</h2><p className="muted">문항과 정답을 저장한 뒤 발행하면 학생 제출용 QR이 준비됩니다.</p></div><button type="submit">다음: 활동지 발행하기</button></form> : <div className="card publish-panel"><div><h2>학생에게 나눠줄 준비가 되었어요</h2><p className="muted">마지막 단계에서 QR을 확인하고 인쇄할 수 있어요.</p></div><Link className="button-link" href={`/teacher/worksheets/${worksheet.id}/print`}>다음: 인쇄 미리보기</Link></div>}
+      {worksheet.status === "draft" ? <form action={publishWorksheet} className="card publish-panel"><input type="hidden" name="worksheetId" value={worksheet.id} /><div><h2>활동지 구성을 확인했나요?</h2><p className="muted">문항과 정답을 저장한 뒤 학생 제출 QR을 활성화하세요.</p></div><button type="submit">학생 제출 QR 활성화하기</button></form> : <div className="card publish-panel"><div><h2>학생 제출 QR이 준비되었어요</h2><p className="muted">인쇄 미리보기에서 QR과 실제 인쇄 모습을 확인할 수 있어요.</p></div><Link className="button-link" href={`/teacher/worksheets/${worksheet.id}/print`}>인쇄 미리보기로</Link></div>}
       <form action={reflowWorksheetPages} className="inline-reflow"><input type="hidden" name="worksheetId" value={worksheet.id} /><button type="submit" className="text-button">문항을 한 쪽에 10개씩 다시 배치하기</button></form>
       {pdfImport ? <p className="muted">원본: <Link href={`/teacher/worksheets/import/${pdfImport.id}`}>{pdfImport.original_filename}</Link></p> : null}
       <WorksheetEditor action={saveWorksheet} worksheetId={worksheet.id} standards={standards ?? []} initial={initial} />

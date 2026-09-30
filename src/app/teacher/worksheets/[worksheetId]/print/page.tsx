@@ -70,7 +70,7 @@ export default async function WorksheetPrintPage({ params }: PageProps) {
   return (
     <main className="print-page">
       <div className="print-toolbar"><PrintButton /><p>{qrCode ? "브라우저 인쇄 창에서 ‘PDF로 저장’을 선택해 출력 가능한 PDF를 만드세요." : "초안 미리보기입니다. 학생 제출 QR은 발행 후 표시됩니다."}</p></div>
-      <div className="print-flow"><WorksheetFlow current={4} links={{ 1: "/teacher/worksheets/new", 2: `/teacher/worksheets/${worksheet.id}`, 3: `/teacher/worksheets/${worksheet.id}` }} /></div>
+      <div className="print-flow"><WorksheetFlow current={3} links={{ 1: "/teacher/worksheets/new", 2: `/teacher/worksheets/${worksheet.id}` }} /></div>
       {[...pages.entries()].map(([pageNumber, pageQuestions]) => (
         <section className="worksheet-sheet" key={pageNumber}>
           <header className="worksheet-header"><div><h1>{worksheet.title}</h1><p>{gradeLabel} · {worksheet.semester} {worksheet.area ? `· ${worksheet.area}` : ""} {worksheet.unit_name ? `· ${worksheet.unit_name}` : ""}</p><p>차시 목표: {worksheet.lesson_objective}</p></div>{qrCode ? <div className="qr-block"><img src={qrCode} alt="학생 제출 QR" /><small>학생 제출 QR</small></div> : <div className="qr-block"><strong>초안</strong><small>발행 후 QR 표시</small></div>}</header>

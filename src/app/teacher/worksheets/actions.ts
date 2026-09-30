@@ -416,3 +416,22 @@ export async function publishWorksheet(formData: FormData) {
   revalidatePath(`/teacher/worksheets/${worksheetId}`);
   redirect(`/teacher/worksheets/${worksheetId}?notice=${encodeURIComponent("활동지를 발행했습니다. 인쇄용 PDF와 QR을 사용할 수 있습니다.")}`);
 }
+
+export async function deleteWorksheet(formData: FormData) {
+  const worksheetId = String(formData.get("worksheetId") ?? "");
+  if (!worksheetId) errorRedirect("/teacher/worksheets", "잘못된 활동지 요청입니다.");
+
+  const { admin } = await requireOwnedWorksheet(worksheetId);
+  const { count, error: submissionError } = await admin
+    .from("submissions")
+    .select("id", { count: "exact", head: true })
+    .eq("worksheet_id", worksheetId);
+  if (submissionError) errorRedirect("/teacher/worksheets", "활동지 제출 기록을 확인하지 못했습니다.");
+  if (count) errorRedirect("/teacher/worksheets", "학생 제출 기록이 있는 활동지는 삭제할 수 없습니다.");
+
+  const { error } = await admin.from("worksheets").delete().eq("id", worksheetId);
+  if (error) errorRedirect("/teacher/worksheets", "활동지를 삭제하지 못했습니다.");
+  revalidatePath("/teacher");
+  revalidatePath("/teacher/worksheets");
+  redirect(`/teacher/worksheets?notice=${encodeURIComponent("활동지를 삭제했습니다.")}`);
+}

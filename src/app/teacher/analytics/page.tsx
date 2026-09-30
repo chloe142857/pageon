@@ -17,12 +17,14 @@ export default async function TeacherAnalyticsPage({ searchParams }: PageProps) 
   const analytics = await loadTeacherAnalytics(teacher.id, filters);
   const selectedActivities = filters.worksheetId ? analytics.activitySummaries : analytics.activitySummaries.slice(0, 8);
   const query = analyticsQuery(filters);
+  const hasFilters = Object.values(filters).some(Boolean);
 
   return (
     <section>
       <div className="section-heading page-title"><div><span className="eyebrow">LEARNING INSIGHTS</span><h1>학습 분석</h1><p className="muted">학급의 활동지 결과와 학생의 성취기준별 변화를 살펴보세요.</p></div></div>
-      <form method="get" className="card analytics-filter">
-        <h2>분석 범위</h2>
+      <form method="get" className="analytics-filter">
+        <details open={hasFilters}>
+          <summary><span><strong>분석 범위</strong><small>{hasFilters ? "조건을 적용해 보고 있어요" : "학급·학생·수업 조건으로 좁혀 보기"}</small></span><span className="filter-summary-action">필터 {hasFilters ? "수정" : "열기"}</span></summary>
         <div className="filter-grid">
           <label>학급<select name="classroomId" defaultValue={filters.classroomId ?? ""}><option value="">전체 학급</option>{analytics.classrooms.map((classroom) => <option key={classroom.id} value={classroom.id}>{classroom.name} {classroom.school_year ? `(${classroom.school_year})` : ""}</option>)}</select></label>
           <label>학생<select name="studentId" defaultValue={filters.studentId ?? ""}><option value="">전체 학생</option>{analytics.allStudents.filter((student) => !filters.classroomId || student.classroom_id === filters.classroomId).map((student) => <option key={student.id} value={student.id}>{student.student_number}번 {student.display_name}</option>)}</select></label>
@@ -36,6 +38,7 @@ export default async function TeacherAnalyticsPage({ searchParams }: PageProps) 
           <label>종료일<input name="to" type="date" defaultValue={filters.to ?? ""} /></label>
         </div>
         <div className="capture-actions"><button type="submit">분석하기</button><Link className="button-link secondary-link" href="/teacher/analytics">필터 초기화</Link></div>
+        </details>
       </form>
 
       <section className="card"><h2>활동지별 우리 반 결과</h2>{selectedActivities.length ? <div className="analytics-cards">{selectedActivities.map((activity) => {

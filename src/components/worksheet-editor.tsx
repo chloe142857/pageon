@@ -138,8 +138,9 @@ export function WorksheetEditor({ action, worksheetId, importId, standards, init
         <div className="section-heading"><div><h2>문항</h2><p className="muted">문항과 정답, 해설, 배점을 확인하고 수정하세요.</p></div><button type="button" className="secondary" onClick={() => { setQuestions((current) => [...current, blankQuestion()]); markEdited(); }}>문항 추가</button></div>
         <input type="hidden" name="questionCount" value={questions.length} />
         {questions.map((question, index) => (
-          <fieldset className="question-card" key={index}>
-            <legend>{index + 1}번 문항</legend>
+          <details className="question-card editor-question" key={index} open={index === 0}>
+            <summary><strong>{index + 1}번 · {labels[question.category ?? question.type]}</strong><span>{question.questionText || "문항 내용을 입력하세요."}</span></summary>
+            <div className="editor-question-fields">
             <div className="two-column">
               <label>유형<select name={`question-${index}-category`} value={question.category ?? question.type} onChange={(event) => { const category = event.target.value as QuestionCategory; setQuestions((current) => current.map((item, questionIndex) => questionIndex === index ? { ...item, category, type: category === "word_problem" ? "short_answer" : category as QuestionType } : item)); markEdited(); }}>{[...questionTypes, "word_problem" as const].map((type) => <option key={type} value={type}>{labels[type]}</option>)}</select><input type="hidden" name={`question-${index}-type`} value={question.type} /></label>
               <label>배점<input name={`question-${index}-score`} type="number" min="0" max="100" step="0.5" value={question.score} onChange={(event) => { updateQuestion(index, "score", Number(event.target.value)); markEdited(); }} required /></label>
@@ -149,7 +150,8 @@ export function WorksheetEditor({ action, worksheetId, importId, standards, init
             <label>해설 (선택)<textarea name={`question-${index}-explanation`} value={question.explanation} onChange={(event) => { updateQuestion(index, "explanation", event.target.value); markEdited(); }} /></label>
             <input type="hidden" name={`question-${index}-answer-bbox`} value="" />
             {questions.length > 1 ? <button type="button" className="secondary" onClick={() => { setQuestions((current) => current.filter((_, questionIndex) => questionIndex !== index)); markEdited(); }}>이 문항 삭제</button> : null}
-          </fieldset>
+            </div>
+          </details>
         ))}
       </div>
       <button type="submit">활동지 저장</button>
